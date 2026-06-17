@@ -1,6 +1,5 @@
 import asyncio
 from typing import Optional
-from openai import AsyncOpenAI
 from loguru import logger
 from app.config import settings
 from app.utils.cache import cache
@@ -14,7 +13,7 @@ from app.services.ai.prompts import (
     TRANSLATE_ZH_PROMPT,
 )
 
-client: Optional[AsyncOpenAI] = None
+_client_instance: Optional[object] = None
 
 LANGUAGE_MAP = {
     "Naver Beauty": TRANSLATE_KO_PROMPT,
@@ -29,11 +28,18 @@ LANGUAGE_MAP = {
 }
 
 
-def get_client() -> AsyncOpenAI:
-    global client
-    if client is None:
-        client = AsyncOpenAI(api_key=settings.openai_api_key)
-    return client
+def get_client():
+    global _client_instance
+    if _client_instance is not None:
+        return _client_instance
+    try:
+        from openai import AsyncOpenAI
+
+        _client_instance = AsyncOpenAI(api_key=settings.openai_api_key)
+    except Exception as e:
+        logger.error(f"Failed to init OpenAI client: {e}")
+        raise
+    return _client_instance
 
 
 async def _call_openai(prompt: str, max_tokens: int = 1000) -> Optional[str]:

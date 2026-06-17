@@ -13,6 +13,12 @@ from app.scheduler.scheduler import setup_scheduler
 from app.utils.logger import setup_logger
 from app.utils.cache import cache
 
+try:
+    import httpx
+    logger.info(f"httpx version: {httpx.__version__}")
+except Exception:
+    logger.warning("Could not determine httpx version")
+
 
 async def main():
     setup_logger()
