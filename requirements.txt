@@ -14,4 +14,4 @@ pydantic==2.10.6
 pydantic-settings==2.8.0
 loguru==0.7.3
 redis[hiredis]==5.2.1
-googletrans==4.0.0rc1
+# googletrans==4.0.0rc1  # removed - pins httpx to 0.13.*, conflicts with openai
