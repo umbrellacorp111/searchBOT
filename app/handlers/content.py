@@ -8,7 +8,7 @@ from app.config import settings
 from app.bot.bot import bot
 from app.database.session import async_session_factory
 from app.database import crud
-from app.keyboards.inline import get_article_keyboard
+from app.keyboards.inline import get_article_keyboard, REGION_SOURCES
 
 router = Router()
 
@@ -191,3 +191,42 @@ async def cb_open(callback: types.CallbackQuery):
             return
     await callback.answer()
     await callback.message.answer(f"🔗 Оригинал: {article.url}")
+
+
+@router.callback_query(F.data.startswith("delete:"))
+async def cb_delete(callback: types.CallbackQuery):
+    article_id = int(callback.data.split(":")[1])
+    async with async_session_factory() as session:
+        deleted = await crud.delete_article_by_id(session, article_id)
+    if deleted:
+        await callback.answer("🗑 Статья удалена")
+        await callback.message.delete()
+    else:
+        await callback.answer("❌ Статья не найдена")
+
+
+async def _send_articles_by_sources(
+    chat_id: int, sources: list[str], region_name: str
+):
+    async with async_session_factory() as session:
+        articles = await crud.get_articles_by_sources(session, sources, limit=50)
+    if not articles:
+        await bot.send_message(chat_id, f"📭 Нет статей по региону {region_name}.")
+        return
+    await bot.send_message(
+        chat_id, f"📋 {region_name}: найдено {len(articles)} статей. Отправляю..."
+    )
+    for article in articles:
+        await _send_article(chat_id, article)
+
+
+@router.callback_query(F.data.startswith("region:"))
+async def cb_region(callback: types.CallbackQuery):
+    region = callback.data.split(":")[1]
+    names = {"japan": "🇯🇵 Япония", "korea": "🇰🇷 Корея", "china": "🇨🇳 Китай"}
+    sources = REGION_SOURCES.get(region)
+    if not sources:
+        await callback.answer("❌ Регион не найден")
+        return
+    await callback.answer(f"Отправляю {names.get(region, region)}...")
+    await _send_articles_by_sources(callback.message.chat.id, sources, names.get(region, region))

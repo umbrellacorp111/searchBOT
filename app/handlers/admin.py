@@ -2,12 +2,12 @@ from aiogram import Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from loguru import logger
 from app.config import settings
 from app.database.session import async_session_factory
 from app.database import crud
 from app.scheduler.scheduler import force_fetch_trends_now
+from app.keyboards.inline import get_start_keyboard
 
 router = Router()
 
@@ -22,11 +22,7 @@ class BroadcastState(StatesGroup):
 
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="📋 Все статьи", callback_data="all_articles")],
-        ]
-    )
+    keyboard = get_start_keyboard()
     await message.answer(
         "👋 <b>Trend Aggregator Bot</b>\n\n"
         "Собираю зарубежные тренды из США, Европы, Кореи, Японии и Китая.\n"

@@ -166,6 +166,28 @@ async def get_all_articles(
     return result.scalars().all()
 
 
+async def get_articles_by_sources(
+    session: AsyncSession, sources: list[str], limit: int = 50
+) -> Sequence[Article]:
+    result = await session.execute(
+        select(Article)
+        .where(Article.source.in_(sources))
+        .order_by(Article.created_at.desc())
+        .limit(limit)
+    )
+    return result.scalars().all()
+
+
+async def delete_article_by_id(session: AsyncSession, article_id: int) -> bool:
+    article = await get_article_by_id(session, article_id)
+    if not article:
+        return False
+    await session.delete(article)
+    await session.commit()
+    logger.info(f"Article {article_id} deleted")
+    return True
+
+
 async def delete_old_articles(session: AsyncSession, days: int = 30):
     from datetime import datetime, timedelta
 
