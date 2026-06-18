@@ -67,9 +67,7 @@ async def _fetch_trending() -> list[dict]:
                     "mentions_count": 0,
                     "google_trends_score": 0,
                     "reddit_score": 0,
-                    "author_followers": int(
-                        snippet.get("channelId", 0)
-                    ),  # placeholder
+                    "author_followers": 0  # requires extra channels API call
                 }
             )
         return results

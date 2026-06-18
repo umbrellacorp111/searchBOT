@@ -147,18 +147,25 @@ def calculate_content_score(metrics: dict, title: str = "", content: str = "") -
         or source_name.startswith("reddit/r/")
     )
 
+    has_image_content = bool(
+        re.search(r'<img[^>]+>', content) or
+        re.search(r'\.(jpg|jpeg|png|gif|webp)', content) or
+        "image" in (title + content).lower() or
+        "photo" in (title + content).lower() or
+        "video" in (title + content).lower() or
+        "pic" in (title + content).lower()
+    )
+
     visual_potential = 0
     if is_visual_source:
         visual_potential += 15
     if views > 0:
         visual_potential += 5
+    if has_image_content:
+        visual_potential += 10
 
-    visual_score = min(30, visual_potential +
-                       10 if "photo" in (title + content).lower() or
-                       "video" in (title + content).lower() or
-                       "pic" in (title + content).lower()
-                       else 0)
-    score += min(30, visual_score)
+    visual_score = min(30, visual_potential)
+    score += visual_score
 
     if views >= 1000000:
         score += 20
