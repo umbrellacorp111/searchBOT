@@ -8,12 +8,12 @@ from app.utils.cache import cache
 RSS_SOURCES = {
     "Allure": "https://www.allure.com/feed/rss",
     "Vogue": "https://www.vogue.com/feed/rss",
-    "Cosmopolitan": "https://www.cosmopolitan.com/rss/all.xml/",
+    "Cosmopolitan": "https://www.cosmopolitan.com/rss/all.xml",
     "Refinery29": "https://www.refinery29.com/en-us/beauty/rss.xml",
     "WWD": "https://wwd.com/feed/",
     "Byrdie": "https://www.byrdie.com/feed",
     "Fashion Press Japan": "https://www.fashion-press.net/feed",
-    "Fashionsnap": "https://www.fashionsnap.com/feed/",
+    "Fashionsnap": "https://www.fashionsnap.com/feed",
     "Sina Fashion": "https://fashion.sina.com.cn/rss/",
     "Sohu Fashion": "https://www.sohu.com/rss/fashion.xml",
 }
@@ -28,15 +28,18 @@ async def fetch_rss(source_name: str, url: str) -> list[dict]:
 
     try:
         async with aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=15)
+            timeout=aiohttp.ClientTimeout(total=30)
         ) as session:
             async with session.get(url, headers={"User-Agent": "TrendAggregatorBot/1.0"}) as resp:
                 if resp.status != 200:
-                    logger.warning(f"RSS {source_name} returned {resp.status}")
+                    logger.warning(f"RSS {source_name} ({url}) returned {resp.status}")
                     return []
-                text = await resp.text()
+                raw = await resp.read()
 
-        feed = feedparser.parse(text)
+        feed = feedparser.parse(raw)
+        if not feed.entries:
+            logger.warning(f"RSS {source_name} ({url}) returned 0 entries")
+            return []
         articles = []
         for entry in feed.entries[:10]:
             content_text = _extract_content(entry)
@@ -52,7 +55,7 @@ async def fetch_rss(source_name: str, url: str) -> list[dict]:
         logger.info(f"Fetched {len(articles)} articles from {source_name}")
         return articles
     except Exception as e:
-        logger.error(f"Failed to fetch RSS {source_name}: {e}")
+        logger.error(f"Failed to fetch RSS {source_name} ({url}): {e}")
         return []
 
 

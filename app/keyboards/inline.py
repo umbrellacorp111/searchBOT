@@ -1,28 +1,26 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 REGION_SOURCES = {
-    "japan": ["Fashion Press Japan", "Fashionsnap"],
-    "korea": ["reddit/r/Kbeauty", "reddit/r/AsianBeauty", "reddit/r/KoreanBeauty"],
-    "china": ["Sina Fashion", "Sohu Fashion"],
-}
-
-REGION_BUTTONS = [
-    [
-        InlineKeyboardButton(text="🇯🇵 Япония", callback_data="region:japan"),
-        InlineKeyboardButton(text="🇰🇷 Корея", callback_data="region:korea"),
-        InlineKeyboardButton(text="🇨🇳 Китай", callback_data="region:china"),
+    "japan": [
+        "Fashion Press Japan", "Fashionsnap",
+        "reddit/r/japanesebeauty", "reddit/r/JapaneseFashion", "reddit/r/JBeauty",
     ],
-]
+    "korea": [
+        "reddit/r/Kbeauty", "reddit/r/AsianBeauty", "reddit/r/KoreanBeauty",
+    ],
+    "china": [
+        "Sina Fashion", "Sohu Fashion",
+        "reddit/r/ChinaFashion", "reddit/r/ChineseBeauty",
+    ],
+}
 
 
 def get_start_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [InlineKeyboardButton(text="📋 Все статьи", callback_data="all_articles")],
-        [
-            InlineKeyboardButton(text="🇯🇵 Япония", callback_data="region:japan"),
-            InlineKeyboardButton(text="🇰🇷 Корея", callback_data="region:korea"),
-            InlineKeyboardButton(text="🇨🇳 Китай", callback_data="region:china"),
-        ],
+        [InlineKeyboardButton(text="🇯🇵 Найти статьи с Японии", callback_data="region:japan")],
+        [InlineKeyboardButton(text="🇰🇷 Найти статьи с Кореи", callback_data="region:korea")],
+        [InlineKeyboardButton(text="🇨🇳 Найти статьи с Китая", callback_data="region:china")],
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 

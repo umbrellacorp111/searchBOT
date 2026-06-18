@@ -1,3 +1,4 @@
+import asyncio
 from typing import Optional
 import aiohttp
 from loguru import logger
@@ -15,6 +16,11 @@ SUBREDDITS = [
     "HaircareScience",
     "Fashion",
     "KpopFashion",
+    "japanesebeauty",
+    "JapaneseFashion",
+    "JBeauty",
+    "ChinaFashion",
+    "ChineseBeauty",
 ]
 
 
@@ -38,7 +44,7 @@ async def fetch_reddit_posts(
 
     try:
         async with aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=15)
+            timeout=aiohttp.ClientTimeout(total=20)
         ) as session:
             async with session.get(url, headers=headers) as resp:
                 if resp.status != 200:
@@ -73,5 +79,6 @@ async def fetch_all_reddit() -> list[dict]:
     for sub in SUBREDDITS:
         posts = await fetch_reddit_posts(sub)
         all_posts.extend(posts)
+        await asyncio.sleep(0.5)
     logger.info(f"Total Reddit posts fetched: {len(all_posts)}")
     return all_posts
