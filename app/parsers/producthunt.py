@@ -7,7 +7,7 @@ PH_API = "https://api.producthunt.com/v2/api/graphql"
 
 QUERY = """
 {
-  posts(first: 20, order: VOTES) {
+  posts(first: 10, order: VOTES) {
     edges {
       node {
         id

@@ -36,7 +36,7 @@ class Settings(BaseSettings):
         default=10, validation_alias="PUBLISH_INTERVAL_MINUTES"
     )
     max_articles_per_fetch: int = Field(
-        default=30, validation_alias="MAX_ARTICLES_PER_FETCH"
+        default=200, validation_alias="MAX_ARTICLES_PER_FETCH"
     )
     min_viral_score: int = Field(
         default=45, validation_alias="MIN_VIRAL_SCORE"

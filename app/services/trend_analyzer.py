@@ -82,6 +82,10 @@ def detect_country(source: str, title: str = "", content: str = "") -> str:
         return "Korea"
     if source in ("Sina Fashion", "Sohu Fashion") or source.startswith("reddit/r/China"):
         return "China"
+    if source == "Bilibili" or source == "Weibo":
+        return "China"
+    if source == "Pixiv" or source == "@cosme":
+        return "Japan"
     if source in ("Allure", "Vogue", "Cosmopolitan", "Refinery29", "WWD", "Byrdie"):
         return "USA"
     if source == "BBC News" or source.startswith("reddit/r/CasualUK"):
@@ -97,8 +101,10 @@ def detect_language(source: str) -> str:
         return "en"
     if source in ("Fifty Shades of Snail", "Christinahello"):
         return "en"
-    if source in ("Sina Fashion", "Sohu Fashion"):
+    if source in ("Sina Fashion", "Sohu Fashion", "Bilibili", "Weibo"):
         return "zh"
+    if source == "@cosme":
+        return "ja"
     return "en"
 
 

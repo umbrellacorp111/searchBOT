@@ -41,7 +41,7 @@ async def _fetch_trending() -> list[dict]:
             part="snippet,statistics",
             chart="mostPopular",
             regionCode="US",
-            maxResults=20,
+            maxResults=10,
         )
         response = request.execute()
         items = response.get("items", [])

@@ -19,6 +19,10 @@ SOURCE_LABELS = {
     "google_trends": "🟢 Google Trends",
     "hacker_news": "⚫ Hacker News",
     "product_hunt": "🟠 Product Hunt",
+    "bilibili": "📺 Bilibili",
+    "pixiv": "🎨 Pixiv",
+    "cosme": "💄 @cosme",
+    "weibo": "🔥 Weibo",
     "rss": "📡 RSS",
 }
 
@@ -43,6 +47,12 @@ def _score_emoji(score: int) -> str:
     return "📌"
 
 
+def _truncate(text: str, limit: int) -> str:
+    if len(text) > limit:
+        return text[:limit].rsplit(" ", 1)[0] + "... (truncated)"
+    return text
+
+
 def _format_article_card(article) -> str:
     title = html.escape(article.title_ru or article.title)
     translation = html.escape(article.translation or "Перевод не выполнен")
@@ -51,6 +61,7 @@ def _format_article_card(article) -> str:
     source = html.escape(article.source)
     url = html.escape(article.url)
     score = article.viral_score
+    max_field = 800
 
     emoji = _score_emoji(score)
 
@@ -59,10 +70,14 @@ def _format_article_card(article) -> str:
     card += f"🔗 Ссылка: {url}\n"
 
     if trend_reason:
-        card += f"\n📈 <b>Анализ:</b>\n{trend_reason}\n"
+        card += f"\n📈 <b>Анализ:</b>\n{_truncate(trend_reason, max_field)}\n"
 
-    card += f"\n📝 <b>AI-резюме:</b>\n{summary}\n"
-    card += f"\n🇷🇺 <b>Перевод:</b>\n{translation}"
+    card += f"\n📝 <b>AI-резюме:</b>\n{_truncate(summary, max_field)}\n"
+    card += f"\n🇷🇺 <b>Перевод:</b>\n{_truncate(translation, max_field)}"
+
+    if len(card) > 4000:
+        ratio = 4000 / len(card)
+        card = card[:int(len(card) * ratio * 0.95)].rsplit("\n", 1)[0] + "\n\n... (truncated)"
 
     return card
 

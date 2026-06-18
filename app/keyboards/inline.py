@@ -17,6 +17,14 @@ def get_start_keyboard(is_admin: bool = False) -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="📡 RSS", callback_data="source:rss"),
         ],
         [
+            InlineKeyboardButton(text="🎨 Pixiv", callback_data="source:pixiv"),
+            InlineKeyboardButton(text="📺 Bilibili", callback_data="source:bilibili"),
+        ],
+        [
+            InlineKeyboardButton(text="💄 @cosme", callback_data="source:cosme"),
+            InlineKeyboardButton(text="🔥 Weibo", callback_data="source:weibo"),
+        ],
+        [
             InlineKeyboardButton(text="📋 Все статьи", callback_data="all_articles"),
             InlineKeyboardButton(text="📊 Статистика", callback_data="show_stats"),
         ],

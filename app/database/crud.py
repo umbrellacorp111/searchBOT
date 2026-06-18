@@ -195,6 +195,10 @@ SOURCE_PREFIXES = {
     "google_trends": "Google Trends",
     "hacker_news": "Hacker News",
     "product_hunt": "Product Hunt",
+    "bilibili": "Bilibili",
+    "pixiv": "Pixiv",
+    "cosme": "@cosme",
+    "weibo": "Weibo",
     "rss": None,
 }
 

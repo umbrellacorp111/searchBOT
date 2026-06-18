@@ -36,7 +36,7 @@ async def _fetch_trends() -> list[dict]:
         if trending is None or trending.empty:
             return []
         results = []
-        for title in trending[0].tolist()[:20]:
+        for title in trending[0].tolist()[:10]:
             results.append(
                 {
                     "title": title,

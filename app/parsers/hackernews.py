@@ -23,7 +23,7 @@ async def fetch_hackernews() -> list[dict]:
                 story_ids = await resp.json()
 
             stories = []
-            for story_id in story_ids[:30]:
+            for story_id in story_ids[:10]:
                 try:
                     async with session.get(HN_ITEM.format(story_id)) as item_resp:
                         if item_resp.status != 200:

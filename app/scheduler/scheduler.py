@@ -11,6 +11,10 @@ from app.parsers.google_trends import fetch_google_trends
 from app.parsers.hackernews import fetch_hackernews
 from app.parsers.producthunt import fetch_producthunt
 from app.parsers.youtube import fetch_youtube_trending
+from app.parsers.bilibili import fetch_bilibili
+from app.parsers.pixiv import fetch_pixiv
+from app.parsers.cosme import fetch_cosme
+from app.parsers.weibo import fetch_weibo
 from app.services.trend_analyzer import calculate_content_score, detect_category, detect_country, detect_language
 from app.services.ai_processor import process_article
 
@@ -27,6 +31,10 @@ async def discover_trends() -> int:
         fetch_hackernews(),
         fetch_producthunt(),
         fetch_youtube_trending(),
+        fetch_bilibili(),
+        fetch_pixiv(),
+        fetch_cosme(),
+        fetch_weibo(),
         return_exceptions=True,
     )
 
