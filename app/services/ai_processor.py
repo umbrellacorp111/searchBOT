@@ -1,4 +1,5 @@
 import asyncio
+import re
 from typing import Optional
 from loguru import logger
 from app.config import settings
@@ -8,6 +9,7 @@ from app.services.ai.prompts import (
     SUMMARY_PROMPT,
     CATEGORY_PROMPT,
     TITLE_RU_PROMPT,
+    TREND_ANALYSIS_PROMPT,
     TRANSLATE_KO_PROMPT,
     TRANSLATE_JA_PROMPT,
     TRANSLATE_ZH_PROMPT,
@@ -94,11 +96,13 @@ async def determine_category(text: str) -> Optional[str]:
         result = result.strip()
         valid = {
             "Beauty", "Fashion", "Lifestyle", "Trends",
+            "Technology", "AI", "Marketing", "E-Commerce",
+            "Social Media", "Startups", "Culture", "Science",
             "K-Beauty", "J-Beauty", "C-Beauty",
         }
         if result in valid:
             return result
-        logger.warning(f"Invalid category returned: {result}, defaulting to Trends")
+        logger.warning(f"Invalid category: {result}")
     return "Trends"
 
 
@@ -115,31 +119,94 @@ async def generate_title_ru(text: str) -> Optional[str]:
     return result
 
 
+async def analyze_trend(title: str, content: str) -> dict:
+    cache_key = f"trend_analysis:{hash(content[:500])}"
+    cached = await cache.get(cache_key)
+    if cached:
+        return cached
+
+    text = content or title
+    text = text[:3000]
+    prompt = TREND_ANALYSIS_PROMPT.format(title=title[:200], text=text)
+    result = await _call_openai(prompt, max_tokens=1000)
+    if not result:
+        return {"trend_reason": "Не удалось выполнить анализ тренда."}
+
+    parsed = {
+        "trend_reason": _extract_field(result, "Почему это тренд"),
+        "who_discusses": _extract_field(result, "Кто обсуждает"),
+        "growth_speed": _extract_field(result, "Скорость роста"),
+        "scope": _extract_field(result, "Локальный/Мировой"),
+        "forecast": _extract_field(result, "Прогноз"),
+        "market_impact": _extract_field(result, "Влияние на рынок"),
+    }
+
+    trend_reason_parts = []
+    for key, label in [
+        ("trend_reason", "Почему это тренд"),
+        ("who_discusses", "Кто обсуждает"),
+        ("growth_speed", "Скорость роста"),
+        ("scope", "Локальный/Мировой"),
+        ("forecast", "Прогноз"),
+        ("market_impact", "Влияние на рынок"),
+    ]:
+        val = parsed.get(key, "")
+        if val:
+            trend_reason_parts.append(f"<b>{label}:</b> {val}")
+
+    trend_reason = "\n".join(trend_reason_parts) if trend_reason_parts else result
+
+    await cache.set(cache_key, {"trend_reason": trend_reason}, ttl=3600)
+    return {"trend_reason": trend_reason}
+
+
+def _extract_field(text: str, field_name: str) -> str:
+    pattern = rf"{field_name}:\s*(.+?)(?:\n\n|\Z)"
+    match = re.search(pattern, text, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    lines = text.split("\n")
+    for i, line in enumerate(lines):
+        if line.startswith(field_name + ":"):
+            parts = []
+            parts.append(line[len(field_name) + 1:].strip())
+            for j in range(i + 1, len(lines)):
+                if ":" in lines[j] and not lines[j].startswith(" "):
+                    break
+                if lines[j].strip():
+                    parts.append(lines[j].strip())
+            return " ".join(parts).strip()
+    return ""
+
+
 async def process_article(
     title: str,
     content: str,
     source: str,
+    viral_score: int = 0,
 ) -> dict:
     cache_key = f"processed:{source}:{hash(content)}"
     cached = await cache.get(cache_key)
     if cached:
-        logger.info(f"Cache hit for processed article from {source}")
+        logger.info(f"Cache hit for {source}")
         return cached
 
     text_to_process = content or title
     logger.info(f"Processing article from {source}: {title[:50]}...")
 
-    translation, summary, category, title_ru = await asyncio.gather(
+    translation, summary, category, title_ru, trend_analysis = await asyncio.gather(
         translate_text(text_to_process, source),
         generate_summary(text_to_process),
         determine_category(text_to_process),
         generate_title_ru(text_to_process),
+        analyze_trend(title, text_to_process),
     )
 
     result = {
         "title_ru": title_ru or title,
-        "translation": translation or text_to_process,
+        "translation": translation or text_to_process[:500],
         "summary": summary or "Резюме не сгенерировано.",
+        "trend_reason": trend_analysis.get("trend_reason", "Анализ не выполнен."),
         "category": category or "Trends",
         "source": source,
     }
