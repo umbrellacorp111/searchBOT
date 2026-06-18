@@ -16,6 +16,9 @@ RSS_SOURCES = {
     "Fashionsnap": "https://www.fashionsnap.com/feed",
     "Sina Fashion": "https://fashion.sina.com.cn/rss/",
     "Sohu Fashion": "https://www.sohu.com/rss/fashion.xml",
+    "Tokyo Beauty Book": "https://tokyobeautybook.com/feed/",
+    "Fifty Shades of Snail": "https://fiftyshadesofsnail.com/feed/",
+    "Christinahello": "https://www.christinahello.com/feed/",
 }
 
 

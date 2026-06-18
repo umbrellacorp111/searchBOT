@@ -2,11 +2,13 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 REGION_SOURCES = {
     "japan": [
-        "Fashion Press Japan", "Fashionsnap",
+        "Fashion Press Japan", "Fashionsnap", "Tokyo Beauty Book",
         "reddit/r/japanesebeauty", "reddit/r/JapaneseFashion", "reddit/r/JBeauty",
     ],
     "korea": [
+        "Fifty Shades of Snail", "Christinahello",
         "reddit/r/Kbeauty", "reddit/r/AsianBeauty", "reddit/r/KoreanBeauty",
+        "reddit/r/KpopFashion",
     ],
     "china": [
         "Sina Fashion", "Sohu Fashion",
