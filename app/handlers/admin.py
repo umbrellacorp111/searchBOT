@@ -36,6 +36,7 @@ async def cmd_start(message: types.Message):
         "/sources — статистика по источникам\n"
         "/articles — все статьи\n"
         "/force_fetch — принудительный сбор трендов\n"
+        "/reprocess — переобработать статьи (сбросить старый перевод)\n"
         "/broadcast — массовая рассылка",
         reply_markup=keyboard,
     )
@@ -71,6 +72,23 @@ async def cmd_sources(message: types.Message):
     for s in sources:
         text += f"  {s['source']}: {s['count']} статей\n"
     await message.answer(text)
+
+
+@router.message(Command("reprocess"))
+async def cmd_reprocess(message: types.Message):
+    if not _is_owner(message.from_user.id):
+        return
+    async with async_session_factory() as session:
+        fallback = await crud.get_fallback_articles(session)
+        if not fallback:
+            await message.answer("✅ Нет статей, требующих переобработки.")
+            return
+        ids = [a.id for a in fallback]
+        count = await crud.reset_article_translations(session, ids)
+    await message.answer(
+        f"🔄 Сброшено {count} статей для переобработки. "
+        f"Будут переведены при следующем цикле."
+    )
 
 
 @router.message(Command("force_fetch"))

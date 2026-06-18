@@ -128,6 +128,32 @@ async def get_sources_stats(session: AsyncSession) -> list:
     return [{"source": row[0], "count": row[1]} for row in result]
 
 
+async def get_fallback_articles(
+    session: AsyncSession, limit: int = 50
+) -> Sequence[Article]:
+    result = await session.execute(
+        select(Article)
+        .where(Article.title_ru.isnot(None), Article.title_ru == Article.title)
+        .order_by(Article.created_at.desc())
+        .limit(limit)
+    )
+    return result.scalars().all()
+
+
+async def reset_article_translations(
+    session: AsyncSession, article_ids: list[int]
+) -> int:
+    from sqlalchemy import update
+
+    result = await session.execute(
+        update(Article)
+        .where(Article.id.in_(article_ids))
+        .values(translation=None, title_ru=None, summary=None, category=None)
+    )
+    await session.commit()
+    return result.rowcount
+
+
 async def get_all_articles(
     session: AsyncSession, limit: int = 100, offset: int = 0
 ) -> Sequence[Article]:
