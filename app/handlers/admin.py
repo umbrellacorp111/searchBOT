@@ -1,3 +1,4 @@
+import html
 from aiogram import Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -67,7 +68,7 @@ async def cmd_sources(message: types.Message):
         sources = await crud.get_sources_stats(session)
     text = "<b>📡 Источники:</b>\n\n"
     for s in sources:
-        text += f"  {s['source']}: {s['count']} статей\n"
+        text += f"  {html.escape(s['source'])}: {s['count']} статей\n"
     await message.answer(text)
 
 
@@ -131,7 +132,7 @@ async def process_broadcast(message: types.Message, state: FSMContext):
             try:
                 await bot.send_message(
                     message.chat.id,
-                    f"<b>📢 Рассылка</b>\n\n{message.text}",
+                    f"<b>📢 Рассылка</b>\n\n{html.escape(message.text)}",
                 )
                 sent += 1
             except Exception as e:

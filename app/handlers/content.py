@@ -1,3 +1,4 @@
+import html
 from typing import Optional
 from aiogram import Router, types, F
 from aiogram.filters import Command
@@ -20,9 +21,9 @@ class EditState(StatesGroup):
 
 
 def _format_article_card(article) -> str:
-    title = article.title_ru or article.title
-    translation = article.translation or "Перевод не выполнен"
-    summary = article.summary or "Резюме не сгенерировано"
+    title = html.escape(article.title_ru or article.title)
+    translation = html.escape(article.translation or "Перевод не выполнен")
+    summary = html.escape(article.summary or "Резюме не сгенерировано")
     category = article.category or "Без категории"
     category_emoji = {
         "Beauty": "💄", "Fashion": "👗", "Lifestyle": "🌟",
@@ -31,8 +32,8 @@ def _format_article_card(article) -> str:
 
     return (
         f"{category_emoji} <b>{title}</b>\n\n"
-        f"🌍 Источник: {article.source}\n"
-        f"🔗 Ссылка: {article.url}\n\n"
+        f"🌍 Источник: {html.escape(article.source)}\n"
+        f"🔗 Ссылка: {html.escape(article.url)}\n\n"
         f"📝 <b>AI-резюме:</b>\n{summary}\n\n"
         f"🇷🇺 <b>Перевод:</b>\n{translation}"
     )
@@ -51,9 +52,10 @@ async def _send_article(
             chat_id=chat_id,
             message_id=edit_message_id,
             reply_markup=keyboard,
+            parse_mode="HTML",
         )
     return await bot.send_message(
-        chat_id, text, reply_markup=keyboard
+        chat_id, text, reply_markup=keyboard, parse_mode="HTML"
     )
 
 
@@ -190,7 +192,7 @@ async def cb_open(callback: types.CallbackQuery):
             await callback.answer("❌ Статья не найдена")
             return
     await callback.answer()
-    await callback.message.answer(f"🔗 Оригинал: {article.url}")
+    await callback.message.answer(f"🔗 Оригинал: {html.escape(article.url)}")
 
 
 @router.callback_query(F.data.startswith("delete:"))
