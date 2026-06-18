@@ -57,6 +57,30 @@ async def _send_article(
     )
 
 
+@router.message(Command("articles"))
+async def cmd_articles(message: types.Message):
+    async with async_session_factory() as session:
+        articles = await crud.get_all_articles(session, limit=50)
+    if not articles:
+        await message.answer("📭 Нет статей в базе.")
+        return
+    await message.answer(f"📋 Найдено статей: {len(articles)}. Отправляю...")
+    for article in articles:
+        await _send_article(message.chat.id, article)
+
+
+@router.callback_query(F.data == "all_articles")
+async def cb_all_articles(callback: types.CallbackQuery):
+    async with async_session_factory() as session:
+        articles = await crud.get_all_articles(session, limit=50)
+    if not articles:
+        await callback.answer("📭 Нет статей в базе")
+        return
+    await callback.answer(f"Отправляю {len(articles)} статей...")
+    for article in articles:
+        await _send_article(callback.message.chat.id, article)
+
+
 @router.message(Command("next"))
 async def cmd_next(message: types.Message):
     async with async_session_factory() as session:

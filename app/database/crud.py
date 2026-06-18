@@ -128,6 +128,18 @@ async def get_sources_stats(session: AsyncSession) -> list:
     return [{"source": row[0], "count": row[1]} for row in result]
 
 
+async def get_all_articles(
+    session: AsyncSession, limit: int = 100, offset: int = 0
+) -> Sequence[Article]:
+    result = await session.execute(
+        select(Article)
+        .order_by(Article.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    return result.scalars().all()
+
+
 async def delete_old_articles(session: AsyncSession, days: int = 30):
     from datetime import datetime, timedelta
 
