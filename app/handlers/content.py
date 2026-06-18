@@ -60,25 +60,31 @@ async def _send_article(
 @router.message(Command("articles"))
 async def cmd_articles(message: types.Message):
     async with async_session_factory() as session:
-        articles = await crud.get_all_articles(session, limit=50)
+        articles = await crud.get_all_articles(session, limit=200)
     if not articles:
         await message.answer("📭 Нет статей в базе.")
         return
     await message.answer(f"📋 Найдено статей: {len(articles)}. Отправляю...")
-    for article in articles:
+    for article in articles[:50]:
         await _send_article(message.chat.id, article)
+    remaining = len(articles) - 50
+    if remaining > 0:
+        await message.answer(f"📌 Показано 50 из {len(articles)}. Остальные — по команде /articles")
 
 
 @router.callback_query(F.data == "all_articles")
 async def cb_all_articles(callback: types.CallbackQuery):
     async with async_session_factory() as session:
-        articles = await crud.get_all_articles(session, limit=50)
+        articles = await crud.get_all_articles(session, limit=200)
     if not articles:
         await callback.answer("📭 Нет статей в базе")
         return
-    await callback.answer(f"Отправляю {len(articles)} статей...")
-    for article in articles:
+    await callback.answer(f"Отправляю до 50 статей...")
+    for article in articles[:50]:
         await _send_article(callback.message.chat.id, article)
+    remaining = len(articles) - 50
+    if remaining > 0:
+        await callback.message.answer(f"📌 Показано 50 из {len(articles)}. Остальные — /articles")
 
 
 @router.message(Command("next"))

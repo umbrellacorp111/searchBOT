@@ -155,7 +155,7 @@ async def reset_article_translations(
 
 
 async def get_all_articles(
-    session: AsyncSession, limit: int = 100, offset: int = 0
+    session: AsyncSession, limit: int = 200, offset: int = 0
 ) -> Sequence[Article]:
     result = await session.execute(
         select(Article)

@@ -89,11 +89,11 @@ async def send_unpublished():
             logger.error(f"Failed to auto-publish article {article.id}: {e}")
 
 
-async def force_fetch_trends_now() -> int:
+async def force_fetch_trends_now() -> tuple:
     added = await fetch_trends()
     processed = await process_unprocessed()
     logger.info(f"Force fetch done: added={added}, processed={processed}")
-    return added
+    return added, processed
 
 
 def setup_scheduler() -> AsyncIOScheduler:
@@ -119,6 +119,5 @@ def setup_scheduler() -> AsyncIOScheduler:
 
 
 async def fetch_and_process():
-    added = await fetch_trends()
-    if added > 0:
-        await process_unprocessed()
+    await fetch_trends()
+    await process_unprocessed()

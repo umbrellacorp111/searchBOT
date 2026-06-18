@@ -78,6 +78,7 @@ async def cmd_sources(message: types.Message):
 async def cmd_reprocess(message: types.Message):
     if not _is_owner(message.from_user.id):
         return
+    await message.answer("🔄 Ищу статьи со старым переводом...")
     async with async_session_factory() as session:
         fallback = await crud.get_fallback_articles(session)
         if not fallback:
@@ -85,10 +86,10 @@ async def cmd_reprocess(message: types.Message):
             return
         ids = [a.id for a in fallback]
         count = await crud.reset_article_translations(session, ids)
-    await message.answer(
-        f"🔄 Сброшено {count} статей для переобработки. "
-        f"Будут переведены при следующем цикле."
-    )
+    await message.answer(f"🔄 Сброшено {count} статей. Запускаю перевод...")
+    from app.scheduler.scheduler import process_unprocessed
+    processed = await process_unprocessed()
+    await message.answer(f"✅ Переведено {processed} статей.")
 
 
 @router.message(Command("force_fetch"))
@@ -96,8 +97,12 @@ async def cmd_force_fetch(message: types.Message):
     if not _is_owner(message.from_user.id):
         return
     await message.answer("🔄 Запускаю принудительный сбор трендов...")
-    count = await force_fetch_trends_now()
-    await message.answer(f"✅ Сбор завершён. Добавлено {count} новых статей.")
+    added, processed = await force_fetch_trends_now()
+    await message.answer(
+        f"✅ Сбор завершён.\n"
+        f"Добавлено новых: {added}\n"
+        f"Обработано AI: {processed}"
+    )
 
 
 @router.message(Command("broadcast"))
