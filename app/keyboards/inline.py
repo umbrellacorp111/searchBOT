@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 
-def get_start_keyboard() -> InlineKeyboardMarkup:
+def get_start_keyboard(is_admin: bool = False) -> InlineKeyboardMarkup:
     buttons = [
         [InlineKeyboardButton(text="🔍 Лучшие тренды", callback_data="top_trends")],
         [
@@ -19,6 +19,20 @@ def get_start_keyboard() -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton(text="📋 Все статьи", callback_data="all_articles"),
             InlineKeyboardButton(text="📊 Статистика", callback_data="show_stats"),
+        ],
+    ]
+    if is_admin:
+        buttons.append([
+            InlineKeyboardButton(text="🗑 Удалить все статьи", callback_data="delete_all_confirm"),
+        ])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def get_confirm_delete_keyboard() -> InlineKeyboardMarkup:
+    buttons = [
+        [
+            InlineKeyboardButton(text="✅ Да, удалить всё", callback_data="delete_all_yes"),
+            InlineKeyboardButton(text="❌ Нет", callback_data="delete_all_no"),
         ],
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)

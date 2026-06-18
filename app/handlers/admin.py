@@ -1,5 +1,5 @@
 import html
-from aiogram import Router, types
+from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -8,7 +8,7 @@ from app.config import settings
 from app.database.session import async_session_factory
 from app.database import crud
 from app.scheduler.scheduler import force_fetch_trends_now
-from app.keyboards.inline import get_start_keyboard
+from app.keyboards.inline import get_start_keyboard, get_confirm_delete_keyboard
 
 router = Router()
 
@@ -23,7 +23,7 @@ class BroadcastState(StatesGroup):
 
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
-    keyboard = get_start_keyboard()
+    keyboard = get_start_keyboard(is_admin=_is_owner(message.from_user.id))
     await message.answer(
         "👋 <b>GLOBAL AI TREND HUNTER</b>\n\n"
         "Нахожу вирусные тренды со всего мира: Reddit, YouTube, Google Trends, "
@@ -42,7 +42,8 @@ async def cmd_start(message: types.Message):
         "/top — топ трендов (Content Score ≥ 70)\n"
         "/force_fetch — принудительный сбор\n"
         "/reprocess — переобработка\n"
-        "/broadcast — рассылка",
+        "/broadcast — рассылка\n"
+        "/clear — удалить все статьи",
         reply_markup=keyboard,
     )
 
@@ -163,3 +164,51 @@ async def process_broadcast(message: types.Message, state: FSMContext):
         f"✅ Рассылка завершена.\nОтправлено: {sent}\nОшибок: {failed}"
     )
     await state.clear()
+
+
+@router.callback_query(F.data == "delete_all_confirm")
+async def cb_delete_all_confirm(callback: types.CallbackQuery):
+    if not _is_owner(callback.from_user.id):
+        await callback.answer("❌ Только админ")
+        return
+    await callback.message.answer(
+        "⚠️ <b>Точно удалить ВСЕ статьи из базы?</b>\n\n"
+        "Это действие нельзя отменить.",
+        reply_markup=get_confirm_delete_keyboard(),
+        parse_mode="HTML",
+    )
+    await callback.answer()
+
+
+@router.message(Command("clear"))
+async def cmd_clear(message: types.Message):
+    if not _is_owner(message.from_user.id):
+        return
+    await message.answer(
+        "⚠️ <b>Точно удалить ВСЕ статьи из базы?</b>\n\n"
+        "Это действие нельзя отменить.",
+        reply_markup=get_confirm_delete_keyboard(),
+        parse_mode="HTML",
+    )
+
+
+@router.callback_query(F.data == "delete_all_yes")
+async def cb_delete_all_yes(callback: types.CallbackQuery):
+    if not _is_owner(callback.from_user.id):
+        await callback.answer("❌ Только админ")
+        return
+    async with async_session_factory() as session:
+        count = await crud.delete_all_articles(session)
+    await callback.message.edit_text(
+        f"🗑 Удалено {count} статей.",
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "delete_all_no")
+async def cb_delete_all_no(callback: types.CallbackQuery):
+    if not _is_owner(callback.from_user.id):
+        await callback.answer("❌ Только админ")
+        return
+    await callback.message.edit_text("❌ Отменено.")
+    await callback.answer()

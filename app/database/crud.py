@@ -266,3 +266,10 @@ async def delete_old_articles(session: AsyncSession, days: int = 30):
     )
     await session.commit()
     logger.info(f"Deleted {result.rowcount} old articles")
+
+
+async def delete_all_articles(session: AsyncSession) -> int:
+    result = await session.execute(delete(Article))
+    await session.commit()
+    logger.info(f"Deleted all articles: {result.rowcount}")
+    return result.rowcount
