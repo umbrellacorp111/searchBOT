@@ -13,11 +13,34 @@ from app.keyboards.inline import get_article_keyboard
 
 router = Router()
 
+SOURCE_LABELS = {
+    "youtube": "🔴 YouTube",
+    "reddit": "🔵 Reddit",
+    "google_trends": "🟢 Google Trends",
+    "hacker_news": "⚫ Hacker News",
+    "product_hunt": "🟠 Product Hunt",
+    "rss": "📡 RSS",
+}
+
 
 class EditState(StatesGroup):
     waiting_for_title = State()
     waiting_for_translation = State()
     waiting_for_summary = State()
+
+
+def _score_emoji(score: int) -> str:
+    if score >= 95:
+        return "🔥🔥"
+    if score >= 90:
+        return "🔥"
+    if score >= 85:
+        return "💎"
+    if score >= 80:
+        return "📈"
+    if score >= 70:
+        return "💡"
+    return "📌"
 
 
 def _format_article_card(article) -> str:
@@ -29,14 +52,14 @@ def _format_article_card(article) -> str:
     url = html.escape(article.url)
     score = article.viral_score
 
-    score_emoji = "🔥" if score >= 90 else "📈" if score >= 80 else "💡" if score >= 70 else "📌"
+    emoji = _score_emoji(score)
 
-    card = f"{score_emoji} <b>VIRAL SCORE: {score}/100</b>\n\n"
+    card = f"{emoji} <b>Content Score: {score}/100</b>\n\n"
     card += f"🌍 Источник: {source}\n"
     card += f"🔗 Ссылка: {url}\n"
 
     if trend_reason:
-        card += f"\n📈 <b>Почему это тренд:</b>\n{trend_reason}\n"
+        card += f"\n📈 <b>Анализ:</b>\n{trend_reason}\n"
 
     card += f"\n📝 <b>AI-резюме:</b>\n{summary}\n"
     card += f"\n🇷🇺 <b>Перевод:</b>\n{translation}"
@@ -48,15 +71,16 @@ def _format_analytics(article) -> str:
     growth = "Быстрый" if article.viral_score >= 85 else "Умеренный" if article.viral_score >= 70 else "Низкий"
     scope = "Мировой"
     if article.country and article.country not in ("Global", ""):
-        scope = f"Локальный ({article.country})"
+        scope = f"{article.country}"
+
+    gap = "🔴 Уже популярен в РФ" if article.viral_score < 80 else "🟢 Новинка для РФ" if article.viral_score >= 85 else "🟡 Средняя распространённость"
 
     return (
-        f"📊 <b>Аналитика тренда</b>\n\n"
-        f"🔥 <b>Viral Score:</b> {article.viral_score}/100\n"
-        f"📰 <b>Упоминаний:</b> {article.mentions_count}\n"
-        f"🌍 <b>Источников:</b> 1+\n"
-        f"📈 <b>Скорость роста:</b> {growth}\n"
+        f"📊 <b>Аналитика контента</b>\n\n"
+        f"{_score_emoji(article.viral_score)} <b>Content Score:</b> {article.viral_score}/100\n"
         f"🌐 <b>Охват:</b> {scope}\n"
+        f"📈 <b>Скорость роста:</b> {growth}\n"
+        f"{gap}\n"
         f"👁 <b>Просмотров:</b> {article.views_count:,}\n"
         f"❤️ <b>Лайков:</b> {article.likes_count:,}\n"
         f"💬 <b>Комментариев:</b> {article.comments_count:,}\n"
@@ -84,6 +108,22 @@ async def _send_article(
     )
 
 
+async def _send_articles_list(chat_id: int, articles: list, label: str):
+    if not articles:
+        await bot.send_message(chat_id, f"📭 Нет статей из {label}.")
+        return
+    await bot.send_message(
+        chat_id, f"📋 {label}: {len(articles)} статей. Отправляю..."
+    )
+    for article in articles[:20]:
+        await _send_article(chat_id, article)
+    remaining = len(articles) - 20
+    if remaining > 0:
+        await bot.send_message(
+            chat_id, f"📌 Показано 20 из {len(articles)}. Остальные — /articles"
+        )
+
+
 @router.message(Command("articles"))
 async def cmd_articles(message: types.Message):
     async with async_session_factory() as session:
@@ -106,12 +146,9 @@ async def cb_all_articles(callback: types.CallbackQuery):
     if not articles:
         await callback.answer("📭 Нет статей в базе")
         return
-    await callback.answer(f"Отправляю до 50 статей...")
+    await callback.answer()
     for article in articles[:50]:
         await _send_article(callback.message.chat.id, article)
-    remaining = len(articles) - 50
-    if remaining > 0:
-        await callback.message.answer(f"📌 Показано 50 из {len(articles)}. Остальные — /articles")
 
 
 @router.callback_query(F.data == "top_trends")
@@ -119,9 +156,9 @@ async def cb_top_trends(callback: types.CallbackQuery):
     async with async_session_factory() as session:
         articles = await crud.get_top_trends(session, limit=10, min_score=70)
     if not articles:
-        await callback.answer("📭 Нет трендов с высоким Viral Score")
+        await callback.answer("📭 Нет трендов с Content Score ≥ 70")
         return
-    await callback.answer(f"Отправляю топ тренды...")
+    await callback.answer()
     for article in articles:
         await _send_article(callback.message.chat.id, article)
 
@@ -135,7 +172,7 @@ async def cb_show_stats(callback: types.CallbackQuery):
         f"Всего статей: {stats['total']}\n"
         f"Опубликовано: {stats['published']}\n"
         f"Переведено AI: {stats['translated']}\n"
-        f"Viral Score ≥ 70: {stats['high_score']}\n"
+        f"Content Score ≥ 70: {stats['high_score']}\n"
         f"Средний Score: {stats['avg_score']}\n\n"
         f"<b>По странам:</b>\n"
     )
@@ -143,6 +180,16 @@ async def cb_show_stats(callback: types.CallbackQuery):
         text += f"  {country}: {count}\n"
     await callback.message.answer(text)
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith("source:"))
+async def cb_source_filter(callback: types.CallbackQuery):
+    source_key = callback.data.split(":")[1]
+    label = SOURCE_LABELS.get(source_key, source_key)
+    await callback.answer(f"Загружаю {label}...")
+    async with async_session_factory() as session:
+        articles = await crud.get_articles_by_source_key(session, source_key)
+    await _send_articles_list(callback.message.chat.id, articles, label)
 
 
 @router.callback_query(F.data.startswith("analytics:"))

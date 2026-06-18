@@ -11,7 +11,7 @@ from app.parsers.google_trends import fetch_google_trends
 from app.parsers.hackernews import fetch_hackernews
 from app.parsers.producthunt import fetch_producthunt
 from app.parsers.youtube import fetch_youtube_trending
-from app.services.trend_analyzer import calculate_viral_score, detect_category, detect_country, detect_language
+from app.services.trend_analyzer import calculate_content_score, detect_category, detect_country, detect_language
 from app.services.ai_processor import process_article
 
 scheduler = AsyncIOScheduler()
@@ -43,7 +43,11 @@ async def discover_trends() -> int:
     async with async_session_factory() as session:
         for article_data in all_articles:
             try:
-                viral_score = calculate_viral_score(article_data)
+                content_score = calculate_content_score(
+                    article_data,
+                    title=article_data.get("title", ""),
+                    content=article_data.get("content", ""),
+                )
                 category = detect_category(
                     article_data.get("title", ""),
                     article_data.get("content", ""),
@@ -63,7 +67,7 @@ async def discover_trends() -> int:
                     content=article_data.get("content", ""),
                     country=country or article_data.get("country"),
                     language=language or article_data.get("language"),
-                    viral_score=viral_score,
+                    viral_score=content_score,
                     views_count=article_data.get("views", 0),
                     likes_count=article_data.get("likes", 0),
                     comments_count=article_data.get("comments", 0),

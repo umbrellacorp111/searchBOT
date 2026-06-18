@@ -28,17 +28,18 @@ async def cmd_start(message: types.Message):
         "👋 <b>GLOBAL AI TREND HUNTER</b>\n\n"
         "Нахожу вирусные тренды со всего мира: Reddit, YouTube, Google Trends, "
         "Product Hunt, Hacker News и RSS.\n"
-        "Анализирую популярность через AI, вычисляю Viral Score (0-100) "
+        "Анализирую популярность через AI, вычисляю Content Score (0-100) "
         "и отправляю только самые горячие темы.\n\n"
         "<b>Кнопки ниже:</b>\n"
-        "🔍 Лучшие тренды — топ по Viral Score\n"
+        "🔍 Лучшие тренды — топ по Content Score\n"
+        "🔴 YouTube / 🔵 Reddit / 🟢 Google Trends / ⚫ HN / 🟠 PH / 📡 RSS\n"
         "📋 Все статьи — все материалы\n"
         "📊 Статистика — общая сводка\n\n"
         "Команды администратора:\n"
         "/stats — статистика\n"
         "/sources — статистика по источникам\n"
         "/articles — все статьи\n"
-        "/top — топ трендов (Viral Score ≥ 70)\n"
+        "/top — топ трендов (Content Score ≥ 70)\n"
         "/force_fetch — принудительный сбор\n"
         "/reprocess — переобработка\n"
         "/broadcast — рассылка",
@@ -58,7 +59,7 @@ async def cmd_stats(message: types.Message):
         f"Опубликовано: {stats['published']}\n"
         f"Не опубликовано: {stats['unpublished']}\n"
         f"Переведено AI: {stats['translated']}\n"
-        f"Viral Score ≥ 70: {stats['high_score']}\n"
+        f"Content Score ≥ 70: {stats['high_score']}\n"
         f"Средний Score: {stats['avg_score']}\n\n"
         "<b>По странам:</b>\n"
     )
@@ -84,7 +85,7 @@ async def cmd_top(message: types.Message):
     async with async_session_factory() as session:
         articles = await crud.get_top_trends(session, limit=10, min_score=70)
     if not articles:
-        await message.answer("📭 Нет трендов с Viral Score ≥ 70.")
+        await message.answer("📭 Нет трендов с Content Score ≥ 70.")
         return
     from app.handlers.content import _send_article
     await message.answer(f"🔍 Топ трендов: {len(articles)}")

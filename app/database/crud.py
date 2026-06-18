@@ -3,6 +3,7 @@ from sqlalchemy import select, func, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 from app.database.models import Article
+from app.parsers.rss_parser import RSS_SOURCES
 
 
 async def add_article(
@@ -185,6 +186,41 @@ async def get_articles_by_sources(
         .order_by(Article.viral_score.desc(), Article.created_at.desc())
         .limit(limit)
     )
+    return result.scalars().all()
+
+
+SOURCE_PREFIXES = {
+    "youtube": "YouTube",
+    "reddit": "reddit/r/",
+    "google_trends": "Google Trends",
+    "hacker_news": "Hacker News",
+    "product_hunt": "Product Hunt",
+    "rss": None,
+}
+
+
+async def get_articles_by_source_key(
+    session: AsyncSession, source_key: str, limit: int = 30
+) -> Sequence[Article]:
+    prefix = SOURCE_PREFIXES.get(source_key)
+    if prefix is None:
+        return await get_articles_by_sources(
+            session, list(RSS_SOURCES.keys()), limit
+        )
+    if source_key == "reddit":
+        result = await session.execute(
+            select(Article)
+            .where(Article.source.startswith("reddit/r/"))
+            .order_by(Article.viral_score.desc(), Article.created_at.desc())
+            .limit(limit)
+        )
+    else:
+        result = await session.execute(
+            select(Article)
+            .where(Article.source == prefix)
+            .order_by(Article.viral_score.desc(), Article.created_at.desc())
+            .limit(limit)
+        )
     return result.scalars().all()
 
 

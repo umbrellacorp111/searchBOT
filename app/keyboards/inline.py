@@ -4,8 +4,22 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 def get_start_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [InlineKeyboardButton(text="🔍 Лучшие тренды", callback_data="top_trends")],
-        [InlineKeyboardButton(text="📋 Все статьи", callback_data="all_articles")],
-        [InlineKeyboardButton(text="📊 Статистика", callback_data="show_stats")],
+        [
+            InlineKeyboardButton(text="🔴 YouTube", callback_data="source:youtube"),
+            InlineKeyboardButton(text="🔵 Reddit", callback_data="source:reddit"),
+        ],
+        [
+            InlineKeyboardButton(text="🟢 Google Trends", callback_data="source:google_trends"),
+            InlineKeyboardButton(text="⚫ Hacker News", callback_data="source:hacker_news"),
+        ],
+        [
+            InlineKeyboardButton(text="🟠 Product Hunt", callback_data="source:product_hunt"),
+            InlineKeyboardButton(text="📡 RSS", callback_data="source:rss"),
+        ],
+        [
+            InlineKeyboardButton(text="📋 Все статьи", callback_data="all_articles"),
+            InlineKeyboardButton(text="📊 Статистика", callback_data="show_stats"),
+        ],
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
