@@ -10,9 +10,11 @@ SUBREDDITS = [
     "SkincareAddiction",
     "FemaleFashionAdvice",
     "Kbeauty",
+    "KoreanBeauty",
     "Makeup",
     "HaircareScience",
     "Fashion",
+    "KpopFashion",
 ]
 
 
