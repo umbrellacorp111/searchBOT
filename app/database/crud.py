@@ -1,5 +1,5 @@
 from typing import Optional, Sequence
-from sqlalchemy import select, func, delete
+from sqlalchemy import select, func, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 from app.database.models import Article
@@ -11,21 +11,37 @@ async def add_article(
     url: str,
     source: str,
     content: Optional[str] = None,
+    country: Optional[str] = None,
+    language: Optional[str] = None,
+    viral_score: int = 0,
+    views_count: int = 0,
+    likes_count: int = 0,
+    comments_count: int = 0,
+    shares_count: int = 0,
+    mentions_count: int = 0,
 ) -> Optional[Article]:
     existing = await get_article_by_url(session, url)
     if existing:
-        logger.debug(f"Duplicate article skipped: {url}")
         return None
     article = Article(
         title=title,
+        original_title=title,
         url=url,
         source=source,
         content=content,
+        country=country,
+        language=language,
+        viral_score=viral_score,
+        views_count=views_count,
+        likes_count=likes_count,
+        comments_count=comments_count,
+        shares_count=shares_count,
+        mentions_count=mentions_count,
     )
     session.add(article)
     await session.commit()
     await session.refresh(article)
-    logger.info(f"Article saved: id={article.id} source={source}")
+    logger.info(f"Article saved: id={article.id} source={source} score={viral_score}")
     return article
 
 
@@ -40,12 +56,12 @@ async def get_article_by_id(session: AsyncSession, article_id: int) -> Optional[
 
 
 async def get_unprocessed_articles(
-    session: AsyncSession, limit: int = 20
+    session: AsyncSession, limit: int = 30
 ) -> Sequence[Article]:
     result = await session.execute(
         select(Article)
         .where(Article.translation.is_(None))
-        .order_by(Article.created_at.desc())
+        .order_by(Article.viral_score.desc(), Article.created_at.desc())
         .limit(limit)
     )
     return result.scalars().all()
@@ -57,7 +73,7 @@ async def get_unpublished_articles(
     result = await session.execute(
         select(Article)
         .where(Article.published.is_(False), Article.translation.isnot(None))
-        .order_by(Article.created_at.asc())
+        .order_by(Article.viral_score.desc(), Article.created_at.asc())
         .limit(limit)
     )
     return result.scalars().all()
@@ -70,18 +86,19 @@ async def update_article_translation(
     translation: str,
     summary: str,
     category: str,
+    trend_reason: Optional[str] = None,
 ) -> Optional[Article]:
     article = await get_article_by_id(session, article_id)
     if not article:
-        logger.warning(f"Article {article_id} not found for translation update")
         return None
     article.title_ru = title_ru
     article.translation = translation
     article.summary = summary
     article.category = category
+    if trend_reason:
+        article.trend_reason = trend_reason
     await session.commit()
     await session.refresh(article)
-    logger.info(f"Article {article_id} translation updated")
     return article
 
 
@@ -91,8 +108,19 @@ async def mark_published(session: AsyncSession, article_id: int) -> bool:
         return False
     article.published = True
     await session.commit()
-    logger.info(f"Article {article_id} marked as published")
     return True
+
+
+async def get_top_trends(
+    session: AsyncSession, limit: int = 10, min_score: int = 70
+) -> Sequence[Article]:
+    result = await session.execute(
+        select(Article)
+        .where(Article.viral_score >= min_score)
+        .order_by(Article.viral_score.desc(), Article.created_at.desc())
+        .limit(limit)
+    )
+    return result.scalars().all()
 
 
 async def get_stats(session: AsyncSession) -> dict:
@@ -103,55 +131,37 @@ async def get_stats(session: AsyncSession) -> dict:
     translated = await session.scalar(
         select(func.count(Article.id)).where(Article.translation.isnot(None))
     )
-    categories_result = await session.execute(
-        select(Article.category, func.count(Article.id))
-        .where(Article.category.isnot(None))
-        .group_by(Article.category)
+    high_score = await session.scalar(
+        select(func.count(Article.id)).where(Article.viral_score >= 70)
     )
-    categories = {row[0]: row[1] for row in categories_result}
+    avg_score = await session.scalar(select(func.avg(Article.viral_score)))
+    categories_result = await session.execute(
+        select(Article.country, func.count(Article.id))
+        .where(Article.country.isnot(None))
+        .group_by(Article.country)
+    )
+    countries = {row[0]: row[1] for row in categories_result}
     return {
         "total": total or 0,
         "published": published or 0,
         "unpublished": (total or 0) - (published or 0),
         "translated": translated or 0,
-        "untranslated": (total or 0) - (translated or 0),
-        "categories": categories,
+        "high_score": high_score or 0,
+        "avg_score": round(avg_score or 0, 1),
+        "countries": countries,
     }
 
 
 async def get_sources_stats(session: AsyncSession) -> list:
     result = await session.execute(
-        select(Article.source, func.count(Article.id))
+        select(Article.source, func.count(Article.id), func.avg(Article.viral_score))
         .group_by(Article.source)
         .order_by(func.count(Article.id).desc())
     )
-    return [{"source": row[0], "count": row[1]} for row in result]
-
-
-async def get_fallback_articles(
-    session: AsyncSession, limit: int = 50
-) -> Sequence[Article]:
-    result = await session.execute(
-        select(Article)
-        .where(Article.title_ru.isnot(None), Article.title_ru == Article.title)
-        .order_by(Article.created_at.desc())
-        .limit(limit)
-    )
-    return result.scalars().all()
-
-
-async def reset_article_translations(
-    session: AsyncSession, article_ids: list[int]
-) -> int:
-    from sqlalchemy import update
-
-    result = await session.execute(
-        update(Article)
-        .where(Article.id.in_(article_ids))
-        .values(translation=None, title_ru=None, summary=None, category=None)
-    )
-    await session.commit()
-    return result.rowcount
+    return [
+        {"source": row[0], "count": row[1], "avg_score": round(row[2] or 0, 1)}
+        for row in result
+    ]
 
 
 async def get_all_articles(
@@ -159,7 +169,7 @@ async def get_all_articles(
 ) -> Sequence[Article]:
     result = await session.execute(
         select(Article)
-        .order_by(Article.created_at.desc())
+        .order_by(Article.viral_score.desc(), Article.created_at.desc())
         .offset(offset)
         .limit(limit)
     )
@@ -172,7 +182,7 @@ async def get_articles_by_sources(
     result = await session.execute(
         select(Article)
         .where(Article.source.in_(sources))
-        .order_by(Article.created_at.desc())
+        .order_by(Article.viral_score.desc(), Article.created_at.desc())
         .limit(limit)
     )
     return result.scalars().all()
@@ -184,8 +194,31 @@ async def delete_article_by_id(session: AsyncSession, article_id: int) -> bool:
         return False
     await session.delete(article)
     await session.commit()
-    logger.info(f"Article {article_id} deleted")
     return True
+
+
+async def get_fallback_articles(
+    session: AsyncSession, limit: int = 50
+) -> Sequence[Article]:
+    result = await session.execute(
+        select(Article)
+        .where(Article.title_ru.isnot(None), Article.title_ru == Article.original_title)
+        .order_by(Article.created_at.desc())
+        .limit(limit)
+    )
+    return result.scalars().all()
+
+
+async def reset_article_translations(
+    session: AsyncSession, article_ids: list[int]
+) -> int:
+    result = await session.execute(
+        update(Article)
+        .where(Article.id.in_(article_ids))
+        .values(translation=None, title_ru=None, summary=None, category=None, trend_reason=None)
+    )
+    await session.commit()
+    return result.rowcount
 
 
 async def delete_old_articles(session: AsyncSession, days: int = 30):

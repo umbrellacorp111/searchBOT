@@ -9,7 +9,7 @@ from app.config import settings
 from app.bot.bot import bot
 from app.database.session import async_session_factory
 from app.database import crud
-from app.keyboards.inline import get_article_keyboard, REGION_SOURCES
+from app.keyboards.inline import get_article_keyboard
 
 router = Router()
 
@@ -24,18 +24,43 @@ def _format_article_card(article) -> str:
     title = html.escape(article.title_ru or article.title)
     translation = html.escape(article.translation or "Перевод не выполнен")
     summary = html.escape(article.summary or "Резюме не сгенерировано")
-    category = article.category or "Без категории"
-    category_emoji = {
-        "Beauty": "💄", "Fashion": "👗", "Lifestyle": "🌟",
-        "Trends": "📈", "K-Beauty": "🇰🇷", "J-Beauty": "🇯🇵", "C-Beauty": "🇨🇳",
-    }.get(category, "📰")
+    trend_reason = html.escape(article.trend_reason or "")
+    source = html.escape(article.source)
+    url = html.escape(article.url)
+    score = article.viral_score
+
+    score_emoji = "🔥" if score >= 90 else "📈" if score >= 80 else "💡" if score >= 70 else "📌"
+
+    card = f"{score_emoji} <b>VIRAL SCORE: {score}/100</b>\n\n"
+    card += f"🌍 Источник: {source}\n"
+    card += f"🔗 Ссылка: {url}\n"
+
+    if trend_reason:
+        card += f"\n📈 <b>Почему это тренд:</b>\n{trend_reason}\n"
+
+    card += f"\n📝 <b>AI-резюме:</b>\n{summary}\n"
+    card += f"\n🇷🇺 <b>Перевод:</b>\n{translation}"
+
+    return card
+
+
+def _format_analytics(article) -> str:
+    growth = "Быстрый" if article.viral_score >= 85 else "Умеренный" if article.viral_score >= 70 else "Низкий"
+    scope = "Мировой"
+    if article.country and article.country not in ("Global", ""):
+        scope = f"Локальный ({article.country})"
 
     return (
-        f"{category_emoji} <b>{title}</b>\n\n"
-        f"🌍 Источник: {html.escape(article.source)}\n"
-        f"🔗 Ссылка: {html.escape(article.url)}\n\n"
-        f"📝 <b>AI-резюме:</b>\n{summary}\n\n"
-        f"🇷🇺 <b>Перевод:</b>\n{translation}"
+        f"📊 <b>Аналитика тренда</b>\n\n"
+        f"🔥 <b>Viral Score:</b> {article.viral_score}/100\n"
+        f"📰 <b>Упоминаний:</b> {article.mentions_count}\n"
+        f"🌍 <b>Источников:</b> 1+\n"
+        f"📈 <b>Скорость роста:</b> {growth}\n"
+        f"🌐 <b>Охват:</b> {scope}\n"
+        f"👁 <b>Просмотров:</b> {article.views_count:,}\n"
+        f"❤️ <b>Лайков:</b> {article.likes_count:,}\n"
+        f"💬 <b>Комментариев:</b> {article.comments_count:,}\n"
+        f"🔄 <b>Репостов:</b> {article.shares_count:,}\n"
     )
 
 
@@ -45,7 +70,7 @@ async def _send_article(
     edit_message_id: Optional[int] = None,
 ) -> Optional[types.Message]:
     text = _format_article_card(article)
-    keyboard = get_article_keyboard(article.id)
+    keyboard = get_article_keyboard(article.id, published=article.published)
     if edit_message_id:
         return await bot.edit_message_text(
             text,
@@ -71,7 +96,7 @@ async def cmd_articles(message: types.Message):
         await _send_article(message.chat.id, article)
     remaining = len(articles) - 50
     if remaining > 0:
-        await message.answer(f"📌 Показано 50 из {len(articles)}. Остальные — по команде /articles")
+        await message.answer(f"📌 Показано 50 из {len(articles)}. Остальные — /articles")
 
 
 @router.callback_query(F.data == "all_articles")
@@ -87,6 +112,50 @@ async def cb_all_articles(callback: types.CallbackQuery):
     remaining = len(articles) - 50
     if remaining > 0:
         await callback.message.answer(f"📌 Показано 50 из {len(articles)}. Остальные — /articles")
+
+
+@router.callback_query(F.data == "top_trends")
+async def cb_top_trends(callback: types.CallbackQuery):
+    async with async_session_factory() as session:
+        articles = await crud.get_top_trends(session, limit=10, min_score=70)
+    if not articles:
+        await callback.answer("📭 Нет трендов с высоким Viral Score")
+        return
+    await callback.answer(f"Отправляю топ тренды...")
+    for article in articles:
+        await _send_article(callback.message.chat.id, article)
+
+
+@router.callback_query(F.data == "show_stats")
+async def cb_show_stats(callback: types.CallbackQuery):
+    async with async_session_factory() as session:
+        stats = await crud.get_stats(session)
+    text = (
+        f"<b>📊 Статистика</b>\n\n"
+        f"Всего статей: {stats['total']}\n"
+        f"Опубликовано: {stats['published']}\n"
+        f"Переведено AI: {stats['translated']}\n"
+        f"Viral Score ≥ 70: {stats['high_score']}\n"
+        f"Средний Score: {stats['avg_score']}\n\n"
+        f"<b>По странам:</b>\n"
+    )
+    for country, count in stats["countries"].items():
+        text += f"  {country}: {count}\n"
+    await callback.message.answer(text)
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("analytics:"))
+async def cb_analytics(callback: types.CallbackQuery):
+    article_id = int(callback.data.split(":")[1])
+    async with async_session_factory() as session:
+        article = await crud.get_article_by_id(session, article_id)
+        if not article:
+            await callback.answer("❌ Статья не найдена")
+            return
+        text = _format_analytics(article)
+        await callback.message.answer(text, parse_mode="HTML")
+        await callback.answer()
 
 
 @router.message(Command("next"))
@@ -205,30 +274,3 @@ async def cb_delete(callback: types.CallbackQuery):
         await callback.message.delete()
     else:
         await callback.answer("❌ Статья не найдена")
-
-
-async def _send_articles_by_sources(
-    chat_id: int, sources: list[str], region_name: str
-):
-    async with async_session_factory() as session:
-        articles = await crud.get_articles_by_sources(session, sources, limit=50)
-    if not articles:
-        await bot.send_message(chat_id, f"📭 Нет статей по региону {region_name}.")
-        return
-    await bot.send_message(
-        chat_id, f"📋 {region_name}: найдено {len(articles)} статей. Отправляю..."
-    )
-    for article in articles:
-        await _send_article(chat_id, article)
-
-
-@router.callback_query(F.data.startswith("region:"))
-async def cb_region(callback: types.CallbackQuery):
-    region = callback.data.split(":")[1]
-    names = {"japan": "🇯🇵 Япония", "korea": "🇰🇷 Корея", "china": "🇨🇳 Китай"}
-    sources = REGION_SOURCES.get(region)
-    if not sources:
-        await callback.answer("❌ Регион не найден")
-        return
-    await callback.answer(f"Отправляю {names.get(region, region)}...")
-    await _send_articles_by_sources(callback.message.chat.id, sources, names.get(region, region))

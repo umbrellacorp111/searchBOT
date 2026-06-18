@@ -25,17 +25,23 @@ class BroadcastState(StatesGroup):
 async def cmd_start(message: types.Message):
     keyboard = get_start_keyboard()
     await message.answer(
-        "👋 <b>Trend Aggregator Bot</b>\n\n"
-        "Собираю зарубежные тренды из США, Европы, Кореи, Японии и Китая.\n"
-        "Перевожу на русский с помощью AI и отправляю готовые карточки.\n\n"
-        "<b>Кнопки ниже</b> — найти статьи по региону.\n"
+        "👋 <b>GLOBAL AI TREND HUNTER</b>\n\n"
+        "Нахожу вирусные тренды со всего мира: Reddit, YouTube, Google Trends, "
+        "Product Hunt, Hacker News и RSS.\n"
+        "Анализирую популярность через AI, вычисляю Viral Score (0-100) "
+        "и отправляю только самые горячие темы.\n\n"
+        "<b>Кнопки ниже:</b>\n"
+        "🔍 Лучшие тренды — топ по Viral Score\n"
+        "📋 Все статьи — все материалы\n"
+        "📊 Статистика — общая сводка\n\n"
         "Команды администратора:\n"
         "/stats — статистика\n"
         "/sources — статистика по источникам\n"
         "/articles — все статьи\n"
-        "/force_fetch — принудительный сбор трендов\n"
-        "/reprocess — переобработать статьи (сбросить старый перевод)\n"
-        "/broadcast — массовая рассылка",
+        "/top — топ трендов (Viral Score ≥ 70)\n"
+        "/force_fetch — принудительный сбор\n"
+        "/reprocess — переобработка\n"
+        "/broadcast — рассылка",
         reply_markup=keyboard,
     )
 
@@ -51,12 +57,13 @@ async def cmd_stats(message: types.Message):
         f"Всего статей: {stats['total']}\n"
         f"Опубликовано: {stats['published']}\n"
         f"Не опубликовано: {stats['unpublished']}\n"
-        f"Переведено: {stats['translated']}\n"
-        f"Не переведено: {stats['untranslated']}\n\n"
-        "<b>Категории:</b>\n"
+        f"Переведено AI: {stats['translated']}\n"
+        f"Viral Score ≥ 70: {stats['high_score']}\n"
+        f"Средний Score: {stats['avg_score']}\n\n"
+        "<b>По странам:</b>\n"
     )
-    for cat, count in stats["categories"].items():
-        text += f"  {cat}: {count}\n"
+    for country, count in stats["countries"].items():
+        text += f"  {country}: {count}\n"
     await message.answer(text)
 
 
@@ -68,8 +75,21 @@ async def cmd_sources(message: types.Message):
         sources = await crud.get_sources_stats(session)
     text = "<b>📡 Источники:</b>\n\n"
     for s in sources:
-        text += f"  {html.escape(s['source'])}: {s['count']} статей\n"
+        text += f"  {html.escape(s['source'])}: {s['count']} статей (avg score: {s['avg_score']})\n"
     await message.answer(text)
+
+
+@router.message(Command("top"))
+async def cmd_top(message: types.Message):
+    async with async_session_factory() as session:
+        articles = await crud.get_top_trends(session, limit=10, min_score=70)
+    if not articles:
+        await message.answer("📭 Нет трендов с Viral Score ≥ 70.")
+        return
+    from app.handlers.content import _send_article
+    await message.answer(f"🔍 Топ трендов: {len(articles)}")
+    for article in articles:
+        await _send_article(message.chat.id, article)
 
 
 @router.message(Command("reprocess"))
@@ -119,7 +139,6 @@ async def process_broadcast(message: types.Message, state: FSMContext):
     from app.database.session import async_session_factory
     from sqlalchemy import select
     from app.database.models import Article
-    from sqlalchemy.ext.asyncio import AsyncSession
 
     async with async_session_factory() as session:
         sent = 0
