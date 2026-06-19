@@ -118,14 +118,19 @@ async def get_top_trends(
     result = await session.execute(
         select(Article)
         .where(Article.viral_score >= min_score)
+        .where(Article.viral_score > 0)
+        .where((Article.category.is_(None)) | (Article.category != "Discarded"))
         .order_by(Article.viral_score.desc(), Article.created_at.desc())
         .limit(limit)
     )
     return result.scalars().all()
 
 
-async def get_stats(session: AsyncSession) -> dict:
-    total = await session.scalar(select(func.count(Article.id)))
+async def get_stats(session: AsyncSession, min_high_score: int = 80) -> dict:
+    not_discarded = (Article.category.is_(None)) | (Article.category != "Discarded")
+    total = await session.scalar(
+        select(func.count(Article.id)).where(Article.viral_score > 0)
+    )
     published = await session.scalar(
         select(func.count(Article.id)).where(Article.published.is_(True))
     )
@@ -133,12 +138,15 @@ async def get_stats(session: AsyncSession) -> dict:
         select(func.count(Article.id)).where(Article.translation.isnot(None))
     )
     high_score = await session.scalar(
-        select(func.count(Article.id)).where(Article.viral_score >= 70)
+        select(func.count(Article.id)).where(Article.viral_score >= min_high_score)
     )
-    avg_score = await session.scalar(select(func.avg(Article.viral_score)))
+    avg_score = await session.scalar(
+        select(func.avg(Article.viral_score)).where(Article.viral_score > 0)
+    )
     categories_result = await session.execute(
         select(Article.country, func.count(Article.id))
         .where(Article.country.isnot(None))
+        .where(not_discarded)
         .group_by(Article.country)
     )
     countries = {row[0]: row[1] for row in categories_result}
@@ -170,6 +178,7 @@ async def get_all_articles(
 ) -> Sequence[Article]:
     result = await session.execute(
         select(Article)
+        .where(Article.viral_score > 0)
         .order_by(Article.viral_score.desc(), Article.created_at.desc())
         .offset(offset)
         .limit(limit)
@@ -277,3 +286,50 @@ async def delete_all_articles(session: AsyncSession) -> int:
     await session.commit()
     logger.info(f"Deleted all articles: {result.rowcount}")
     return result.rowcount
+
+
+async def get_unseen_by_category(
+    session: AsyncSession,
+    category: str = None,
+    min_score: int = 80,
+    limit: int = 10,
+) -> Sequence[Article]:
+    stmt = (
+        select(Article)
+        .where(Article.shown.is_(False))
+        .where(Article.viral_score >= min_score)
+        .where(Article.viral_score > 0)
+        .where((Article.category.is_(None)) | (Article.category != "Discarded"))
+    )
+    if category and category != "all":
+        stmt = stmt.where(Article.category == category)
+    stmt = stmt.order_by(Article.viral_score.desc(), Article.created_at.desc()).limit(limit)
+    result = await session.execute(stmt)
+    return result.scalars().all()
+
+
+async def mark_articles_as_shown(
+    session: AsyncSession, article_ids: list[int]
+) -> int:
+    result = await session.execute(
+        update(Article)
+        .where(Article.id.in_(article_ids))
+        .values(shown=True)
+    )
+    await session.commit()
+    return result.rowcount
+
+
+async def get_unseen_count(session: AsyncSession) -> dict:
+    result = await session.execute(
+        select(Article.category, func.count(Article.id))
+        .where(Article.shown.is_(False))
+        .where(Article.viral_score >= 80)
+        .where(Article.viral_score > 0)
+        .group_by(Article.category)
+    )
+    counts = {}
+    for row in result:
+        cat = row[0] or "Uncategorized"
+        counts[cat] = row[1]
+    return counts

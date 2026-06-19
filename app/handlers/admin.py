@@ -8,7 +8,7 @@ from app.config import settings
 from app.database.session import async_session_factory
 from app.database import crud
 from app.scheduler.scheduler import force_fetch_trends_now
-from app.keyboards.inline import get_start_keyboard, get_confirm_delete_keyboard
+from app.keyboards.inline import get_confirm_delete_keyboard
 
 router = Router()
 
@@ -21,31 +21,7 @@ class BroadcastState(StatesGroup):
     waiting_for_message = State()
 
 
-@router.message(Command("start"))
-async def cmd_start(message: types.Message):
-    keyboard = get_start_keyboard(is_admin=_is_owner(message.from_user.id))
-    await message.answer(
-        "👋 <b>GLOBAL AI TREND HUNTER</b>\n\n"
-        "Нахожу вирусные тренды со всего мира: Reddit, YouTube, Google Trends, "
-        "Product Hunt, Hacker News и RSS.\n"
-        "Анализирую популярность через AI, вычисляю Content Score (0-100) "
-        "и отправляю только самые горячие темы.\n\n"
-        "<b>Кнопки ниже:</b>\n"
-        "🔍 Лучшие тренды — топ по Content Score\n"
-        "🔴 YouTube / 🔵 Reddit / 🟢 Google Trends / ⚫ HN / 🟠 PH / 📡 RSS\n"
-        "📋 Все статьи — все материалы\n"
-        "📊 Статистика — общая сводка\n\n"
-        "Команды администратора:\n"
-        "/stats — статистика\n"
-        "/sources — статистика по источникам\n"
-        "/articles — все статьи\n"
-        "/top — топ трендов (Content Score ≥ 70)\n"
-        "/force_fetch — принудительный сбор\n"
-        "/reprocess — переобработка\n"
-        "/broadcast — рассылка\n"
-        "/clear — удалить все статьи",
-        reply_markup=keyboard,
-    )
+
 
 
 @router.message(Command("stats"))
@@ -53,14 +29,14 @@ async def cmd_stats(message: types.Message):
     if not _is_owner(message.from_user.id):
         return
     async with async_session_factory() as session:
-        stats = await crud.get_stats(session)
+        stats = await crud.get_stats(session, min_high_score=settings.min_viral_score)
     text = (
         "<b>📊 Статистика</b>\n\n"
         f"Всего статей: {stats['total']}\n"
         f"Опубликовано: {stats['published']}\n"
         f"Не опубликовано: {stats['unpublished']}\n"
         f"Переведено AI: {stats['translated']}\n"
-        f"Content Score ≥ 70: {stats['high_score']}\n"
+        f"Content Score ≥ {settings.min_viral_score}: {stats['high_score']}\n"
         f"Средний Score: {stats['avg_score']}\n\n"
         "<b>По странам:</b>\n"
     )
@@ -84,14 +60,14 @@ async def cmd_sources(message: types.Message):
 @router.message(Command("top"))
 async def cmd_top(message: types.Message):
     async with async_session_factory() as session:
-        articles = await crud.get_top_trends(session, limit=10, min_score=70)
+        articles = await crud.get_top_trends(session, limit=10, min_score=settings.min_viral_score)
     if not articles:
-        await message.answer("📭 Нет трендов с Content Score ≥ 70.")
+        await message.answer(f"📭 Нет трендов с Content Score ≥ {settings.min_viral_score}.")
         return
-    from app.handlers.content import _send_article
+    from app.handlers.content import _send_content_card
     await message.answer(f"🔍 Топ трендов: {len(articles)}")
     for article in articles:
-        await _send_article(message.chat.id, article)
+        await _send_content_card(message.chat.id, article)
 
 
 @router.message(Command("reprocess"))

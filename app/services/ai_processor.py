@@ -10,6 +10,7 @@ from app.services.ai.prompts import (
     CATEGORY_PROMPT,
     TITLE_RU_PROMPT,
     TREND_ANALYSIS_PROMPT,
+    AUDIENCE_FILTER_PROMPT,
     TRANSLATE_KO_PROMPT,
     TRANSLATE_JA_PROMPT,
     TRANSLATE_ZH_PROMPT,
@@ -119,6 +120,20 @@ async def generate_title_ru(text: str) -> Optional[str]:
     return result
 
 
+async def is_relevant_for_audience(title: str, content: str) -> bool:
+    text = content or title
+    if not text or len(text.strip()) < 10:
+        return True
+    prompt = AUDIENCE_FILTER_PROMPT.format(title=title[:200], text=text[:1500])
+    result = await _call_openai(prompt, max_tokens=10)
+    if result:
+        result = result.strip().upper()
+        if result == "NO":
+            logger.info(f"Audience filter rejected: {title[:60]}")
+            return False
+    return True
+
+
 async def analyze_trend(title: str, content: str) -> dict:
     cache_key = f"trend_analysis:{hash(content[:500])}"
     cached = await cache.get(cache_key)
@@ -193,6 +208,18 @@ async def process_article(
 
     text_to_process = content or title
     logger.info(f"Processing article from {source}: {title[:50]}...")
+
+    if not await is_relevant_for_audience(title, text_to_process):
+        result = {
+            "title_ru": title,
+            "translation": "Отфильтровано: не соответствует целевой аудитории.",
+            "summary": "Контент не релевантен для молодой женской аудитории.",
+            "trend_reason": "Discarded",
+            "category": "Discarded",
+            "source": source,
+        }
+        await cache.set(cache_key, result, ttl=3600)
+        return result
 
     translation, summary, category, title_ru, trend_analysis = await asyncio.gather(
         translate_text(text_to_process, source),

@@ -29,6 +29,12 @@ NEW_COLUMNS = {
     "likes_count": "INTEGER DEFAULT 0",
     "comments_count": "INTEGER DEFAULT 0",
     "shares_count": "INTEGER DEFAULT 0",
+    "shown": "BOOLEAN DEFAULT 0",
+    "media_urls": "TEXT",
+    "product_url": "VARCHAR(1024)",
+    "original_post_url": "VARCHAR(1024)",
+    "visual_type": "VARCHAR(32)",
+    "aesthetic_tags": "VARCHAR(512)",
 }
 
 

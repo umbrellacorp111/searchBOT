@@ -33,6 +33,12 @@ class Article(Base):
     shares_count: Mapped[int] = mapped_column(Integer, default=0)
 
     published: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    shown: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    media_urls: Mapped[str] = mapped_column(Text, nullable=True)
+    product_url: Mapped[str] = mapped_column(String(1024), nullable=True)
+    original_post_url: Mapped[str] = mapped_column(String(1024), nullable=True)
+    visual_type: Mapped[str] = mapped_column(String(32), nullable=True)
+    aesthetic_tags: Mapped[str] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )
