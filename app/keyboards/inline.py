@@ -29,10 +29,9 @@ def get_start_keyboard(is_admin: bool = False) -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="📋 Все тренды", callback_data="cat:all"),
         InlineKeyboardButton(text="📊 Статистика", callback_data="show_stats"),
     ])
-    if is_admin:
-        buttons.append([
-            InlineKeyboardButton(text="🗑 Удалить все", callback_data="delete_all_confirm"),
-        ])
+    buttons.append([
+        InlineKeyboardButton(text="🗑 Удалить всё", callback_data="delete_all_now"),
+    ])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
@@ -62,10 +61,4 @@ def get_content_keyboard(
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-def get_confirm_delete_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="✅ Да, удалить всё", callback_data="delete_all_yes"),
-            InlineKeyboardButton(text="❌ Нет", callback_data="delete_all_no"),
-        ],
-    ])
+

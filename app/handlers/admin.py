@@ -8,7 +8,6 @@ from app.config import settings
 from app.database.session import async_session_factory
 from app.database import crud
 from app.scheduler.scheduler import force_fetch_trends_now
-from app.keyboards.inline import get_confirm_delete_keyboard
 
 router = Router()
 
@@ -165,49 +164,4 @@ async def process_broadcast(message: types.Message, state: FSMContext):
     await state.clear()
 
 
-@router.callback_query(F.data == "delete_all_confirm")
-async def cb_delete_all_confirm(callback: types.CallbackQuery):
-    if not _is_owner(callback.from_user.id):
-        await callback.answer("❌ Только админ")
-        return
-    await callback.message.answer(
-        "⚠️ <b>Точно удалить ВСЕ статьи из базы?</b>\n\n"
-        "Это действие нельзя отменить.",
-        reply_markup=get_confirm_delete_keyboard(),
-        parse_mode="HTML",
-    )
-    await callback.answer()
 
-
-@router.message(Command("clear"))
-async def cmd_clear(message: types.Message):
-    if not _is_owner(message.from_user.id):
-        return
-    await message.answer(
-        "⚠️ <b>Точно удалить ВСЕ статьи из базы?</b>\n\n"
-        "Это действие нельзя отменить.",
-        reply_markup=get_confirm_delete_keyboard(),
-        parse_mode="HTML",
-    )
-
-
-@router.callback_query(F.data == "delete_all_yes")
-async def cb_delete_all_yes(callback: types.CallbackQuery):
-    if not _is_owner(callback.from_user.id):
-        await callback.answer("❌ Только админ")
-        return
-    async with async_session_factory() as session:
-        count = await crud.delete_all_articles(session)
-    await callback.message.edit_text(
-        f"🗑 Удалено {count} статей.",
-    )
-    await callback.answer()
-
-
-@router.callback_query(F.data == "delete_all_no")
-async def cb_delete_all_no(callback: types.CallbackQuery):
-    if not _is_owner(callback.from_user.id):
-        await callback.answer("❌ Только админ")
-        return
-    await callback.message.edit_text("❌ Отменено.")
-    await callback.answer()
