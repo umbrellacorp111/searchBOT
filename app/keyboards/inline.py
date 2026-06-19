@@ -14,6 +14,30 @@ CATEGORIES = [
     "📌 Pinterest Ideas",
 ]
 
+CATEGORY_MAP = {
+    "🔥 Hot Trends": "Trends",
+    "💄 Beauty": "Beauty",
+    "👗 Fashion": "Fashion",
+    "✨ Aesthetics": "Aesthetic Trends",
+    "🛍 Viral Products": "Viral Products",
+    "🏠 Home Decor": "Home Decor",
+    "🎥 Viral Videos": "Trends",
+    "💎 Luxury": "Luxury",
+    "🌸 Asia Trends": "K-Beauty",
+    "📌 Pinterest Ideas": "Lifestyle",
+}
+
+
+def resolve_display_category(display: str) -> str:
+    return CATEGORY_MAP.get(display, display)
+
+def get_category_display_by_db(db_category: str) -> str:
+    """Reverse lookup: DB category -> display name with emoji."""
+    for display, db in CATEGORY_MAP.items():
+        if db == db_category:
+            return display
+    return db_category
+
 
 def get_start_keyboard(is_admin: bool = False) -> InlineKeyboardMarkup:
     buttons = []

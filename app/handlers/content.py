@@ -9,7 +9,7 @@ from app.config import settings
 from app.bot.bot import bot
 from app.database.session import async_session_factory
 from app.database import crud
-from app.keyboards.inline import get_content_keyboard, get_start_keyboard
+from app.keyboards.inline import get_content_keyboard, get_start_keyboard, resolve_display_category, get_category_display_by_db
 
 router = Router()
 
@@ -155,8 +155,9 @@ async def cmd_start(message: types.Message):
 
 @router.callback_query(F.data.startswith("cat:"))
 async def cb_category(callback: types.CallbackQuery):
-    category = callback.data.split(":", 1)[1]
-    await callback.answer(f"Loading {category}...")
+    raw = callback.data.split(":", 1)[1]
+    category = resolve_display_category(raw)
+    await callback.answer(f"Loading {raw}...")
     await _show_content_by_category(callback.message.chat.id, category)
 
 
@@ -220,7 +221,8 @@ async def cb_show_stats(callback: types.CallbackQuery):
         f"<b>Unseen by category:</b>\n"
     )
     for cat, count in unseen.items():
-        text += f"  {cat}: {count}\n"
+        display = get_category_display_by_db(cat)
+        text += f"  {display}: {count}\n"
     text += "\n<b>By country:</b>\n"
     for country, count in stats["countries"].items():
         text += f"  {country}: {count}\n"
