@@ -39,7 +39,7 @@ class Settings(BaseSettings):
         default=200, validation_alias="MAX_ARTICLES_PER_FETCH"
     )
     min_viral_score: int = Field(
-        default=80, validation_alias="MIN_VIRAL_SCORE"
+        default=50, validation_alias="MIN_VIRAL_SCORE"
     )
 
     use_redis_cache: bool = Field(default=False, validation_alias="USE_REDIS_CACHE")

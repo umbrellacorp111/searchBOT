@@ -56,19 +56,9 @@ def is_blocked(title: str, content: str) -> bool:
     return sum(1 for p in BLOCKED_PATTERNS if re.search(p, text)) >= 2
 
 
-def has_visual(source: str, content: str) -> bool:
-    if any(s in source for s in HIGH_VISUAL_SOURCES):
-        return True
-    return bool(
-        re.search(r'<img[^>]+>', content) or
-        re.search(r'\.(jpg|jpeg|png|gif|webp|mp4)', content) or
-        "photo" in content.lower() or "video" in content.lower() or "image" in content.lower()
-    )
-
-
 def visual_appeal(source: str, content: str, views: int) -> int:
-    s = 45 if any(s in source for s in HIGH_VISUAL_SOURCES) else 0
-    if re.search(r'<img[^>]+>', content) or re.search(r'\.(jpg|jpeg|png|gif|webp)', content):
+    s = 45 if any(s in source for s in HIGH_VISUAL_SOURCES) else 20
+    if re.search(r'<img[^>]+>', content) or re.search(r'\[IMAGE:', content) or re.search(r'\.(jpg|jpeg|png|gif|webp)', content):
         s += 30
     if "video" in content.lower() or "photo" in content.lower() or "image" in content.lower():
         s += 10
@@ -85,7 +75,7 @@ def pinterest_potential(source: str, title: str, content: str) -> int:
         s += 30
     if any(kw in content.lower() for kw in PIN_SAVE_KEYWORDS):
         s += 20
-    if re.search(r'\.(jpg|jpeg|png|gif|webp)', content):
+    if re.search(r'\.(jpg|jpeg|png|gif|webp)', content) or re.search(r'\[IMAGE:', content):
         s += 20
     return min(100, s)
 
@@ -103,18 +93,9 @@ def save_potential(source: str, title: str, content: str) -> int:
     return min(100, s)
 
 
-def repost_potential(source: str, title: str, content: str) -> int:
-    s = 25 if any(kw in source.lower() for kw in ["tiktok", "instagram", "youtube", "pinterest"]) else 0
-    if any(kw in title.lower() for kw in VIRAL_KEYWORDS):
-        s += 25
-    if any(kw in content.lower() for kw in VIRAL_KEYWORDS):
-        s += 15
-    return min(100, s)
-
-
 def novelty_score(title: str, content: str) -> int:
     text = (title + " " + content).lower()
-    return min(100, sum(1 for kw in NOVELTY_KEYWORDS if kw in text) * 15)
+    return min(100, 20 + sum(1 for kw in NOVELTY_KEYWORDS if kw in text) * 20)
 
 
 def global_spread(source: str, country: str, title: str, content: str) -> int:
@@ -157,20 +138,14 @@ def calculate_content_score(metrics: dict, title: str = "", content: str = "") -
     vis = visual_appeal(source, content, views)
     pin = pinterest_potential(source, title, content)
     save = save_potential(source, title, content)
-    rep = repost_potential(source, title, content)
     nov = novelty_score(title, content)
     glob = global_spread(source, country, title, content)
     rare = russia_rarity(title, content)
 
-    score = vis * 0.30 + pin * 0.20 + save * 0.15 + rep * 0.10 + nov * 0.10 + glob * 0.10 + rare * 0.05
-
-    # Text-only penalty: -40%
-    if not has_visual(source, content):
-        score *= 0.6
-        logger.debug(f"Text penalty for {source}: {title[:50]}")
+    score = vis * 0.35 + pin * 0.25 + save * 0.20 + nov * 0.10 + glob * 0.10 + rare * 0.05
 
     final = max(0, min(100, int(round(score))))
-    logger.debug(f"Score: {final} | vis={vis} pin={pin} save={save} rep={rep} nov={nov} glob={glob} rare={rare}")
+    logger.debug(f"Score: {final} | vis={vis} pin={pin} save={save} nov={nov} glob={glob} rare={rare}")
     return final
 
 

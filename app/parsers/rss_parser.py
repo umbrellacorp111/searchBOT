@@ -70,14 +70,37 @@ def _extract_content(entry: feedparser.FeedParserDict) -> str:
         content = entry.summary
     elif hasattr(entry, "description"):
         content = entry.description
+
+    images = []
     if content:
         try:
             soup = BeautifulSoup(content, "html.parser")
+            for img in soup.find_all("img", src=True):
+                src = img["src"].strip()
+                if src.startswith("http"):
+                    images.append(src)
             for tag in soup(["script", "style", "nav", "footer", "header"]):
                 tag.decompose()
             content = soup.get_text(separator="\n", strip=True)
         except Exception:
             pass
+
+    # Append image references for visual detection
+    for img_url in images[:3]:
+        content += f"\n[IMAGE: {img_url}]"
+
+    # Check media_content / enclosure
+    if hasattr(entry, "media_content") and entry.media_content:
+        for mc in entry.media_content[:3]:
+            url = mc.get("url", "")
+            if url and url not in content:
+                content += f"\n[IMAGE: {url}]"
+    if hasattr(entry, "enclosures"):
+        for enc in entry.enclosures[:3]:
+            url = enc.get("href", "")
+            if url and url not in content:
+                content += f"\n[IMAGE: {url}]"
+
     return content[:5000]
 
 

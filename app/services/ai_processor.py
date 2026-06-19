@@ -97,8 +97,11 @@ async def determine_category(text: str) -> Optional[str]:
         result = result.strip()
         valid = {
             "Beauty", "Fashion", "Lifestyle", "Trends",
-            "Technology", "AI", "Marketing", "E-Commerce",
-            "Social Media", "Startups", "Culture", "Science",
+            "Luxury", "Celebrity Fashion", "Celebrity Beauty",
+            "Hair Trends", "Makeup Trends", "Nail Trends", "Skincare Trends",
+            "Wellness", "Home Decor", "Travel Ideas", "Wedding Trends",
+            "Jewelry", "Handbags", "Shoes",
+            "Viral Products", "Aesthetic Trends",
             "K-Beauty", "J-Beauty", "C-Beauty",
         }
         if result in valid:
