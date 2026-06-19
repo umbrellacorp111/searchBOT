@@ -195,21 +195,14 @@ async def cb_delete_all_now(callback: types.CallbackQuery):
 @router.callback_query(F.data == "show_archive")
 async def cb_show_archive(callback: types.CallbackQuery):
     async with async_session_factory() as session:
-        articles = await crud.get_all_articles_no_filter(session, limit=20)
+        articles = await crud.get_all_articles_no_filter(session, limit=10)
     if not articles:
         await callback.message.answer("📭 Архив пуст")
         await callback.answer()
         return
-    lines = []
-    for i, a in enumerate(articles, 1):
-        score_emoji = "🆕" if not a.shown else "✅"
-        cat = a.category or "—"
-        title = a.title or "No title"
-        if len(title) > 50:
-            title = title[:47] + "..."
-        lines.append(f"{i}. {score_emoji} [{cat}] {title}")
-    text = "<b>📦 Архив (последние 20):</b>\n\n" + "\n".join(lines)
-    await callback.message.answer(text, parse_mode="HTML")
+    await callback.message.answer(f"📦 Архив: {len(articles)} статей")
+    for a in articles:
+        await _send_content_card(callback.message.chat.id, a)
     await callback.answer()
 
 
