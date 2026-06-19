@@ -35,7 +35,7 @@ async def cmd_stats(message: types.Message):
         f"Опубликовано: {stats['published']}\n"
         f"Не опубликовано: {stats['unpublished']}\n"
         f"Переведено AI: {stats['translated']}\n"
-        f        f"Средний Score: {stats['avg_score']}\n\n"
+        f"Средний Score: {stats['avg_score']}\n\n"
         "<b>По странам:</b>\n"
     )
     for country, count in stats["countries"].items():
