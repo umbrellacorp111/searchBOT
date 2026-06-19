@@ -184,6 +184,14 @@ async def cb_next(callback: types.CallbackQuery):
     await callback.answer()
 
 
+@router.callback_query(F.data == "delete_all_now")
+async def cb_delete_all_now(callback: types.CallbackQuery):
+    async with async_session_factory() as session:
+        count = await crud.delete_all_articles(session)
+    await callback.message.edit_text(f"🗑 Удалено {count} статей")
+    await callback.answer(f"✅ Удалено {count}")
+
+
 @router.callback_query(F.data == "show_stats")
 async def cb_show_stats(callback: types.CallbackQuery):
     async with async_session_factory() as session:
