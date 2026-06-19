@@ -35,8 +35,7 @@ async def cmd_stats(message: types.Message):
         f"Опубликовано: {stats['published']}\n"
         f"Не опубликовано: {stats['unpublished']}\n"
         f"Переведено AI: {stats['translated']}\n"
-        f"Content Score ≥ {settings.min_viral_score}: {stats['high_score']}\n"
-        f"Средний Score: {stats['avg_score']}\n\n"
+        f        f"Средний Score: {stats['avg_score']}\n\n"
         "<b>По странам:</b>\n"
     )
     for country, count in stats["countries"].items():
@@ -59,9 +58,9 @@ async def cmd_sources(message: types.Message):
 @router.message(Command("top"))
 async def cmd_top(message: types.Message):
     async with async_session_factory() as session:
-        articles = await crud.get_top_trends(session, limit=10, min_score=settings.min_viral_score)
+        articles = await crud.get_top_trends(session, limit=10)
     if not articles:
-        await message.answer(f"📭 Нет трендов с Content Score ≥ {settings.min_viral_score}.")
+        await message.answer("📭 Нет трендов.")
         return
     from app.handlers.content import _send_content_card
     await message.answer(f"🔍 Топ трендов: {len(articles)}")

@@ -113,12 +113,10 @@ async def mark_published(session: AsyncSession, article_id: int) -> bool:
 
 
 async def get_top_trends(
-    session: AsyncSession, limit: int = 10, min_score: int = 70
+    session: AsyncSession, limit: int = 10, min_score: int = 0
 ) -> Sequence[Article]:
     result = await session.execute(
         select(Article)
-        .where(Article.viral_score >= min_score)
-        .where(Article.viral_score > 0)
         .where((Article.category.is_(None)) | (Article.category != "Discarded"))
         .order_by(Article.viral_score.desc(), Article.created_at.desc())
         .limit(limit)
@@ -291,14 +289,12 @@ async def delete_all_articles(session: AsyncSession) -> int:
 async def get_unseen_by_category(
     session: AsyncSession,
     category: str = None,
-    min_score: int = 80,
+    min_score: int = 0,
     limit: int = 10,
 ) -> Sequence[Article]:
     stmt = (
         select(Article)
         .where(Article.shown.is_(False))
-        .where(Article.viral_score >= min_score)
-        .where(Article.viral_score > 0)
         .where((Article.category.is_(None)) | (Article.category != "Discarded"))
     )
     if category and category != "all":
@@ -320,6 +316,16 @@ async def mark_articles_as_shown(
     return result.rowcount
 
 
+async def get_all_articles_no_filter(session: AsyncSession, limit: int = 20) -> Sequence[Article]:
+    result = await session.execute(
+        select(Article)
+        .where((Article.category.is_(None)) | (Article.category != "Discarded"))
+        .order_by(Article.viral_score.desc(), Article.created_at.desc())
+        .limit(limit)
+    )
+    return result.scalars().all()
+
+
 async def get_all_articles(session: AsyncSession) -> Sequence[Article]:
     result = await session.execute(
         select(Article).where(Article.viral_score > 0).order_by(Article.id)
@@ -336,12 +342,10 @@ async def batch_update_scores(session: AsyncSession, updates: list[tuple[int, in
     return len(updates)
 
 
-async def get_unseen_count(session: AsyncSession, min_score: int = 50) -> dict:
+async def get_unseen_count(session: AsyncSession, min_score: int = 0) -> dict:
     result = await session.execute(
         select(Article.category, func.count(Article.id))
         .where(Article.shown.is_(False))
-        .where(Article.viral_score >= min_score)
-        .where(Article.viral_score > 0)
         .group_by(Article.category)
     )
     counts = {}

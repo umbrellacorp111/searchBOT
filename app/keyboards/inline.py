@@ -30,6 +30,7 @@ def get_start_keyboard(is_admin: bool = False) -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="📊 Статистика", callback_data="show_stats"),
     ])
     buttons.append([
+        InlineKeyboardButton(text="📦 Архив", callback_data="show_archive"),
         InlineKeyboardButton(text="🗑 Удалить всё", callback_data="delete_all_now"),
     ])
     return InlineKeyboardMarkup(inline_keyboard=buttons)

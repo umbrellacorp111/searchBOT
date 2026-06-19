@@ -192,6 +192,27 @@ async def cb_delete_all_now(callback: types.CallbackQuery):
     await callback.answer(f"✅ Удалено {count}")
 
 
+@router.callback_query(F.data == "show_archive")
+async def cb_show_archive(callback: types.CallbackQuery):
+    async with async_session_factory() as session:
+        articles = await crud.get_all_articles_no_filter(session, limit=20)
+    if not articles:
+        await callback.message.answer("📭 Архив пуст")
+        await callback.answer()
+        return
+    lines = []
+    for i, a in enumerate(articles, 1):
+        score_emoji = "🆕" if not a.shown else "✅"
+        cat = a.category or "—"
+        title = a.title or "No title"
+        if len(title) > 50:
+            title = title[:47] + "..."
+        lines.append(f"{i}. {score_emoji} [{cat}] {title}")
+    text = "<b>📦 Архив (последние 20):</b>\n\n" + "\n".join(lines)
+    await callback.message.answer(text, parse_mode="HTML")
+    await callback.answer()
+
+
 @router.callback_query(F.data == "show_stats")
 async def cb_show_stats(callback: types.CallbackQuery):
     async with async_session_factory() as session:
@@ -202,9 +223,8 @@ async def cb_show_stats(callback: types.CallbackQuery):
         f"Total articles: {stats['total']}\n"
         f"Published: {stats['published']}\n"
         f"AI-processed: {stats['translated']}\n"
-        f"Score ≥ {settings.min_viral_score}: {stats['high_score']}\n"
         f"Avg Score: {stats['avg_score']}\n\n"
-        f"<b>Unseen by category (score ≥ {settings.min_viral_score}):</b>\n"
+        f"<b>Unseen by category:</b>\n"
     )
     for cat, count in unseen.items():
         text += f"  {cat}: {count}\n"
