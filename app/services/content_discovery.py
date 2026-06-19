@@ -48,7 +48,7 @@ async def fetch_all_sources() -> list[dict]:
         all_articles.extend(result)
 
     logger.info(f"Fetched {len(all_articles)} raw articles from {len(source_names)} sources")
-    return all_articles
+    return all_articles[:settings.max_articles_per_fetch]
 
 
 async def run_discovery_cycle() -> int:

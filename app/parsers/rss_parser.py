@@ -44,7 +44,7 @@ async def fetch_rss(source_name: str, url: str) -> list[dict]:
             logger.warning(f"RSS {source_name} ({url}) returned 0 entries")
             return []
         articles = []
-        for entry in feed.entries[:10]:
+        for entry in feed.entries[:3]:
             content_text = _extract_content(entry)
             articles.append(
                 {
