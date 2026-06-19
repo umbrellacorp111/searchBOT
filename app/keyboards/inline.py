@@ -26,6 +26,7 @@ def get_start_keyboard(is_admin: bool = False) -> InlineKeyboardMarkup:
     if row:
         buttons.append(row)
     buttons.append([
+        InlineKeyboardButton(text="📋 Все тренды", callback_data="cat:all"),
         InlineKeyboardButton(text="📊 Статистика", callback_data="show_stats"),
     ])
     if is_admin:

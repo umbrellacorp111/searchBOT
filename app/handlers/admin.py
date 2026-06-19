@@ -70,6 +70,29 @@ async def cmd_top(message: types.Message):
         await _send_content_card(message.chat.id, article)
 
 
+@router.message(Command("rescore"))
+async def cmd_rescore(message: types.Message):
+    if not _is_owner(message.from_user.id):
+        return
+    await message.answer("🔄 Пересчитываю Content Score для всех статей...")
+    from app.services.trend_analyzer import calculate_content_score
+
+    async with async_session_factory() as session:
+        articles = await crud.get_all_articles(session)
+        updates = []
+        for a in articles:
+            metrics = {"source": a.source or "", "views": a.views or 0, "likes": a.likes or 0, "comments": a.comments or 0, "country": a.country or ""}
+            text = (a.content or "") + (a.summary or "")
+            new_score = calculate_content_score(metrics, title=a.title or "", content=text)
+            if new_score != a.viral_score:
+                updates.append((a.id, new_score))
+        if updates:
+            count = await crud.batch_update_scores(session, updates)
+            await message.answer(f"✅ Пересчитано {count} статей.")
+        else:
+            await message.answer("✅ Все оценки актуальны.")
+
+
 @router.message(Command("reprocess"))
 async def cmd_reprocess(message: types.Message):
     if not _is_owner(message.from_user.id):

@@ -320,11 +320,27 @@ async def mark_articles_as_shown(
     return result.rowcount
 
 
-async def get_unseen_count(session: AsyncSession) -> dict:
+async def get_all_articles(session: AsyncSession) -> Sequence[Article]:
+    result = await session.execute(
+        select(Article).where(Article.viral_score > 0).order_by(Article.id)
+    )
+    return result.scalars().all()
+
+
+async def batch_update_scores(session: AsyncSession, updates: list[tuple[int, int]]) -> int:
+    for article_id, new_score in updates:
+        await session.execute(
+            update(Article).where(Article.id == article_id).values(viral_score=new_score)
+        )
+    await session.commit()
+    return len(updates)
+
+
+async def get_unseen_count(session: AsyncSession, min_score: int = 50) -> dict:
     result = await session.execute(
         select(Article.category, func.count(Article.id))
         .where(Article.shown.is_(False))
-        .where(Article.viral_score >= 80)
+        .where(Article.viral_score >= min_score)
         .where(Article.viral_score > 0)
         .group_by(Article.category)
     )

@@ -27,7 +27,7 @@ def _score_emoji(score: int) -> str:
         return "🔥"
     if score >= 85:
         return "💎"
-    if score >= 80:
+    if score >= 50:
         return "📈"
     return "📌"
 
@@ -188,7 +188,7 @@ async def cb_next(callback: types.CallbackQuery):
 async def cb_show_stats(callback: types.CallbackQuery):
     async with async_session_factory() as session:
         stats = await crud.get_stats(session, min_high_score=settings.min_viral_score)
-        unseen = await crud.get_unseen_count(session)
+        unseen = await crud.get_unseen_count(session, min_score=settings.min_viral_score)
     text = (
         f"<b>📊 Statistics</b>\n\n"
         f"Total articles: {stats['total']}\n"
@@ -196,7 +196,7 @@ async def cb_show_stats(callback: types.CallbackQuery):
         f"AI-processed: {stats['translated']}\n"
         f"Score ≥ {settings.min_viral_score}: {stats['high_score']}\n"
         f"Avg Score: {stats['avg_score']}\n\n"
-        f"<b>Unseen by category (score ≥ 80):</b>\n"
+        f"<b>Unseen by category (score ≥ {settings.min_viral_score}):</b>\n"
     )
     for cat, count in unseen.items():
         text += f"  {cat}: {count}\n"
